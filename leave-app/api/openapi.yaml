@@ -1,0 +1,664 @@
+openapi: 3.0.3
+info:
+  title: Leave Management API
+  description: API for managing employee leave requests with approval workflow
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: User
+    description: User management endpoints
+  - name: Leave
+    description: Leave request management
+  - name: Admin
+    description: Admin-only endpoints
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /ping:
+    get:
+      summary: Health check
+      description: Simple health check endpoint (no authentication required)
+      tags:
+        - Health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: pong
+
+  /api/me:
+    get:
+      summary: Get current user
+      description: Returns the authenticated user's information
+      tags:
+        - User
+      responses:
+        "200":
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/users:
+    get:
+      summary: Get all users
+      description: Returns list of all users (Admin only)
+      tags:
+        - Admin
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/users/{id}/role:
+    put:
+      summary: Update user role
+      description: Update a user's role (Admin only)
+      tags:
+        - Admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRoleRequest"
+      responses:
+        "200":
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User role updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/admin/allowances:
+    put:
+      summary: Update default allowances
+      description: Update default leave allowances for all users (Admin only)
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAllowancesRequest"
+      responses:
+        "204":
+          description: Allowances updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/leaves:
+    get:
+      summary: Get leave requests with leave days
+      description: Returns leave requests with their leave days included. Regular users see their own leaves, admins see all leaves.
+      tags:
+        - Leave
+      responses:
+        "200":
+          description: List of leave requests with leave days
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Leave"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create leave request
+      description: Submit a new leave request (single-day or multi-day). For single-day leaves, you can specify isHalfDay and halfDayPeriod. Automatically calculates weekdays and excludes weekends.
+      tags:
+        - Leave
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeaveRequest"
+      responses:
+        "201":
+          description: Leave created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+        "400":
+          description: Invalid request (e.g., invalid date range, only weekends selected, invalid date format, invalid half-day parameters)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidDateRange:
+                  value:
+                    error: Invalid date range
+                onlyWeekends:
+                  value:
+                    error: Selected period contains only weekends
+                invalidDateFormat:
+                  value:
+                    error: Invalid start date format
+                invalidHalfDay:
+                  value:
+                    error: Half-day parameters can only be used for single-day leaves
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/leaves/{id}:
+    get:
+      summary: Get leave by ID
+      description: Returns a specific leave request by ID with leave days included. Users can only view their own leaves, admins can view all.
+      tags:
+        - Leave
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Leave ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Leave details with leave days
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Leave not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      summary: Update leave (dates and/or status)
+      description: |
+        Update a leave request. This endpoint supports two types of updates:
+        - **Date/half-day updates** (owner of pending leaves or admin): Modify startDate/endDate and half-day settings
+        - **Status updates** (admin only): Change status to approved/rejected with an optional comment
+
+        When updating dates for single-day leaves, you can include `isHalfDay` and `halfDayPeriod`.
+        The server recalculates `days` array and `totalLeaveDays` when dates change.
+      tags:
+        - Leave
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Leave ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaveRequest"
+      responses:
+        "200":
+          description: Leave dates/half-day updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leave"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Leave not found or not editable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Invalid half-day update (e.g., isHalfDay provided for multi-day leave)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete leave request
+      description: Delete own leave request (only pending leaves can be deleted)
+      tags:
+        - Leave
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Leave ID
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Leave deleted successfully
+        "403":
+          description: Forbidden (not your leave or not pending status)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Leave not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # Note: individual status/approve/reject endpoints were consolidated into PUT /api/leaves/{id}
+
+  /api/holidays:
+    get:
+      summary: Get all holidays
+      description: Returns list of all public holidays
+      tags:
+        - Leave
+      responses:
+        "200":
+          description: List of holidays
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Holiday"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from JWKS authentication
+
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - role
+        - allowances
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        role:
+          type: string
+          enum: [user, admin]
+          description: User role
+          example: "user"
+        allowances:
+          $ref: "#/components/schemas/Allowance"
+
+    Allowance:
+      type: object
+      required:
+        - sick
+        - annual
+        - casual
+      properties:
+        sick:
+          type: integer
+          description: Sick leave allowance (days)
+          example: 10
+        annual:
+          type: integer
+          description: Annual leave allowance (days)
+          example: 20
+        casual:
+          type: integer
+          description: Casual leave allowance (days)
+          example: 5
+
+    Leave:
+      type: object
+      required:
+        - id
+        - userId
+        - type
+        - startDate
+        - endDate
+        - totalLeaveDays
+        - reason
+        - status
+        - createdAt
+        - days
+      properties:
+        id:
+          type: string
+          description: Unique leave identifier
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        userId:
+          type: string
+          description: ID of user who submitted the leave
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        userEmail:
+          type: string
+          format: email
+          description: Email of user (returned in GET requests)
+          example: "user@example.com"
+        type:
+          type: string
+          enum: [sick, annual, casual]
+          description: Type of leave
+          example: "annual"
+        startDate:
+          type: string
+          format: date
+          description: Leave start date (YYYY-MM-DD)
+          example: "2026-02-20"
+        endDate:
+          type: string
+          format: date
+          description: Leave end date (YYYY-MM-DD)
+          example: "2026-02-22"
+        totalLeaveDays:
+          type: number
+          format: float
+          description: Total weekdays (excluding weekends) in leave period (can be fractional for half days)
+          example: 3.5
+        reason:
+          type: string
+          description: Reason for leave
+          example: "Family vacation"
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Current status of leave request
+          example: "pending"
+        approverComment:
+          type: string
+          nullable: true
+          description: Optional comment from approver
+          example: "Approved - enjoy your vacation"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when leave was created
+          example: "2026-02-18T10:30:00Z"
+        days:
+          type: array
+          description: Array of individual leave days (one entry per weekday in the leave period)
+          items:
+            $ref: "#/components/schemas/LeaveDay"
+          example:
+            - id: "550e8400-e29b-41d4-a716-446655440002"
+              leaveId: "550e8400-e29b-41d4-a716-446655440001"
+              date: "2026-02-20"
+              isHalfDay: false
+              halfDayPeriod: null
+            - id: "550e8400-e29b-41d4-a716-446655440003"
+              leaveId: "550e8400-e29b-41d4-a716-446655440001"
+              date: "2026-02-21"
+              isHalfDay: false
+              halfDayPeriod: null
+            - id: "550e8400-e29b-41d4-a716-446655440004"
+              leaveId: "550e8400-e29b-41d4-a716-446655440001"
+              date: "2026-02-22"
+              isHalfDay: false
+              halfDayPeriod: null
+
+    CreateLeaveRequest:
+      type: object
+      required:
+        - type
+        - startDate
+        - endDate
+        - reason
+      properties:
+        type:
+          type: string
+          enum: [sick, annual, casual]
+          description: Type of leave
+          example: "annual"
+        startDate:
+          type: string
+          format: date
+          description: Leave start date (YYYY-MM-DD)
+          example: "2026-02-20"
+        endDate:
+          type: string
+          format: date
+          description: Leave end date (YYYY-MM-DD). For single-day leaves, should be same as startDate.
+          example: "2026-02-20"
+        reason:
+          type: string
+          description: Reason for leave
+          example: "Medical appointment"
+        isHalfDay:
+          type: boolean
+          description: Optional - Whether this is a half-day leave (only valid for single-day leaves where startDate equals endDate)
+          example: true
+        halfDayPeriod:
+          type: string
+          enum: [morning, evening]
+          description: Optional - Which half of the day (only valid when isHalfDay is true)
+          example: "morning"
+
+    UpdateAllowancesRequest:
+      type: object
+      properties:
+        sick:
+          type: integer
+          description: Sick leave allowance (days)
+          example: 10
+        annual:
+          type: integer
+          description: Annual leave allowance (days)
+          example: 20
+        casual:
+          type: integer
+          description: Casual leave allowance (days)
+          example: 5
+
+    # Note: `UpdateLeaveStatusRequest` removed — status updates are handled via `UpdateLeaveRequest`.
+
+    UpdateUserRoleRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum: [user, admin]
+          description: New role for the user
+          example: "admin"
+
+    LeaveDay:
+      type: object
+      required:
+        - id
+        - leaveId
+        - date
+        - isHalfDay
+      properties:
+        id:
+          type: string
+          description: Unique leave day identifier
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        leaveId:
+          type: string
+          description: ID of the parent leave request
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        date:
+          type: string
+          format: date
+          description: The specific date of this leave day (YYYY-MM-DD)
+          example: "2026-02-20"
+        isHalfDay:
+          type: boolean
+          description: Whether this is a half-day leave
+          example: true
+        halfDayPeriod:
+          type: string
+          enum: [morning, evening]
+          nullable: true
+          description: If half-day, whether it's morning or evening. Only relevant when isHalfDay is true.
+          example: "morning"
+
+    UpdateLeaveRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      description: |
+        Unified request to update a leave. Can be used to update the leave date range (owner or admin)
+        and/or to update the leave status and comment (admin only). When updating dates,
+        single-day leaves may include `isHalfDay` and `halfDayPeriod`.
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: "2026-02-21"
+        endDate:
+          type: string
+          format: date
+          example: "2026-02-23"
+        isHalfDay:
+          type: boolean
+          description: Allowed only when startDate == endDate
+          example: true
+        halfDayPeriod:
+          type: string
+          enum: [morning, evening]
+          nullable: true
+          example: "morning"
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: New status for the leave (admin only)
+          example: "approved"
+        comment:
+          type: string
+          nullable: true
+          description: Optional comment from approver (admin only)
+          example: "Approved - enjoy"
+
+    Holiday:
+      type: object
+      required:
+        - id
+        - date
+        - name
+      properties:
+        id:
+          type: string
+          description: Holiday ID
+          example: "1"
+        date:
+          type: string
+          format: date
+          description: Holiday date (YYYY-MM-DD)
+          example: "2026-02-04"
+        name:
+          type: string
+          description: Holiday name
+          example: "Independence Day"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Invalid request parameters"
+
+    Forbidden:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Forbidden"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "Internal server error"

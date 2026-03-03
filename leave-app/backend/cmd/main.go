@@ -4,6 +4,7 @@ package main
 import (
 	"leave-app/internal/db"
 	"leave-app/internal/handlers"
+	"leave-app/internal/service"
 	"leave-app/pkg/auth"
 	"log"
 
@@ -29,8 +30,11 @@ func main() {
 		log.Fatalf("Could not run database migrations: %v", err)
 	}
 
+	// Initialize services
+	userService := service.NewUserService(database)
+
 	// Initialize authenticator
-	authenticator, err := auth.New(database)
+	authenticator, err := auth.New(userService)
 	if err != nil {
 		log.Fatalf("Failed to initialize authenticator: %v", err)
 	}
@@ -54,22 +58,22 @@ func main() {
 	})
 
 	// Initialize handlers
-	h := handlers.New(database)
+	h := handlers.NewHandler(database)
 
 	// Setup routes
 	api := r.Group("/api")
 	api.Use(authenticator.AuthMiddleware())
 	{
 		api.GET("/me", h.GetCurrentUser)
-		api.GET("/users", h.GetUsers)
-		api.PUT("/admin/allowances", h.UpdateAllowances)
+		api.GET("/users", h.GetAllUsers)
+		api.PUT("/admin/allowances", h.UpdateDefaultAllowances)
 		api.PUT("/users/:id/role", h.UpdateUserRole)
 		api.GET("/leaves", h.GetLeaves)
+		api.GET("/leaves/:id", h.GetLeaveByID)
 		api.POST("/leaves", h.CreateLeave)
-		api.PUT("/leaves/:id", h.UpdateLeave)
+		api.PUT("/leaves/:id", h.UpdateLeave) // Unified endpoint with RBAC for dates and status
 		api.DELETE("/leaves/:id", h.DeleteLeave)
-		api.POST("/leaves/:id/approve", h.ApproveLeave)
-		api.POST("/leaves/:id/reject", h.RejectLeave)
+		api.GET("/holidays", h.GetHolidays)
 	}
 
 	// A simple health check route

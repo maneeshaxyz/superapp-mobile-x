@@ -6,251 +6,160 @@ import (
 	"fmt"
 	"io/ioutil"
 	"leave-app/internal/constants"
-	"leave-app/internal/models"
 	"log"
 	"os"
 	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
 )
 
 type Database struct {
-	Conn *sql.DB
-	mu   sync.Mutex
+    Conn *sql.DB
+    mu   sync.Mutex
 }
 
 // NewDatabase creates a new database connection
 func NewDatabase() (*Database, error) {
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
+    dbUser := os.Getenv("DB_USER")
+    dbPassword := os.Getenv("DB_PASSWORD")
+    dbHost := os.Getenv("DB_HOST")
+    dbPort := os.Getenv("DB_PORT")
+    dbName := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&multiStatements=true", dbUser, dbPassword, dbHost, dbPort, dbName)
+    dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&multiStatements=true", dbUser, dbPassword, dbHost, dbPort, dbName)
 
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, err
-	}
+    db, err := sql.Open("mysql", dsn)
+    if err != nil {
+        return nil, err
+    }
 
-	// Pool tuning - tune according to your workload and DB limits
-	db.SetConnMaxLifetime(time.Duration(constants.ConnMaxLifetimeMinutes) * time.Minute)
-	db.SetMaxIdleConns(constants.MaxIdleConns)
-	db.SetMaxOpenConns(constants.MaxOpenConns)
+    // Pool tuning - tune according to your workload and DB limits
+    db.SetConnMaxLifetime(time.Duration(constants.ConnMaxLifetimeMinutes) * time.Minute)
+    db.SetMaxIdleConns(constants.MaxIdleConns)
+    db.SetMaxOpenConns(constants.MaxOpenConns)
 
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
+    if err := db.Ping(); err != nil {
+        return nil, err
+    }
 
-	d := &Database{Conn: db}
+    d := &Database{Conn: db}
 
-	log.Println("Database connection established")
+    log.Println("Database connection established")
 
-	// Background pinger to keep connections fresh and detect problems early.
-	go func(dsn string, database *Database) {
-		ticker := time.NewTicker(time.Duration(constants.PingIntervalSeconds) * time.Second)
-		defer ticker.Stop()
-		failCount := 0
-		for range ticker.C {
-			database.mu.Lock()
-			err := database.Conn.Ping()
-			database.mu.Unlock()
-			if err != nil {
-				log.Printf("DB ping failed: %v", err)
-				failCount++
-			} else {
-				failCount = 0
-				continue
-			}
+    // Background pinger to keep connections fresh and detect problems early.
+    go func(dsn string, database *Database) {
+        ticker := time.NewTicker(time.Duration(constants.PingIntervalSeconds) * time.Second)
+        defer ticker.Stop()
+        failCount := 0
+        for range ticker.C {
+            database.mu.Lock()
+            err := database.Conn.Ping()
+            database.mu.Unlock()
+            if err != nil {
+                log.Printf("DB ping failed: %v", err)
+                failCount++
+            } else {
+                failCount = 0
+                continue
+            }
 
-			// If we've had several consecutive failures, try a reconnect
-			if failCount >= constants.ReconnectFailThreshold {
-				log.Println("Attempting DB reconnect after repeated ping failures")
-				newDB, err := sql.Open("mysql", dsn)
-				if err != nil {
-					log.Printf("reconnect: sql.Open error: %v", err)
-					continue
-				}
-				newDB.SetConnMaxLifetime(time.Duration(constants.ConnMaxLifetimeMinutes) * time.Minute)
-				newDB.SetMaxIdleConns(constants.MaxIdleConns)
-				newDB.SetMaxOpenConns(constants.MaxOpenConns)
-				if err := newDB.Ping(); err != nil {
-					log.Printf("reconnect: ping failed: %v", err)
-					_ = newDB.Close()
-					continue
-				}
+            // If we've had several consecutive failures, try a reconnect
+            if failCount >= constants.ReconnectFailThreshold {
+                log.Println("Attempting DB reconnect after repeated ping failures")
+                newDB, err := sql.Open("mysql", dsn)
+                if err != nil {
+                    log.Printf("reconnect: sql.Open error: %v", err)
+                    continue
+                }
+                newDB.SetConnMaxLifetime(time.Duration(constants.ConnMaxLifetimeMinutes) * time.Minute)
+                newDB.SetMaxIdleConns(constants.MaxIdleConns)
+                newDB.SetMaxOpenConns(constants.MaxOpenConns)
+                if err := newDB.Ping(); err != nil {
+                    log.Printf("reconnect: ping failed: %v", err)
+                    _ = newDB.Close()
+                    continue
+                }
 
-				// swap in new connection
-				database.mu.Lock()
-				old := database.Conn
-				database.Conn = newDB
-				database.mu.Unlock()
-				_ = old.Close()
-				log.Println("DB reconnect successful")
-				failCount = 0
-			}
-		}
-	}(dsn, d)
+                // swap in new connection
+                database.mu.Lock()
+                old := database.Conn
+                database.Conn = newDB
+                database.mu.Unlock()
+                _ = old.Close()
+                log.Println("DB reconnect successful")
+                failCount = 0
+            }
+        }
+    }(dsn, d)
 
-	return d, nil
+    return d, nil
 }
 
 // Migrate runs the database migrations
 func (db *Database) Migrate() error {
-	query, err := ioutil.ReadFile("migrations/001_initial.sql")
-	if err != nil {
-		return fmt.Errorf("could not read migration file: %w", err)
-	}
+    if os.Getenv("RUN_MIGRATIONS") != "true" {
+        log.Println("Skipping database migrations (RUN_MIGRATIONS != true)")
+        return nil
+    }
 
-	if _, err := db.Conn.Exec(string(query)); err != nil {
-		return fmt.Errorf("could not apply migration: %w", err)
-	}
+    // ensure the migrations tracking table exists
+    create := `CREATE TABLE IF NOT EXISTS schema_migrations (
+        version VARCHAR(255) PRIMARY KEY
+    )`
+    if _, err := db.Conn.Exec(create); err != nil {
+        return fmt.Errorf("could not create schema_migrations table: %w", err)
+    }
 
-	log.Println("Database migration applied successfully")
-	return nil
+    // List of migration files to run in order
+    migrations := []string{
+        "migrations/001_initial.sql",
+        "migrations/002_initial_schema.sql",
+        "migrations/002_insert_seed_data.sql",
+    }
+
+    for _, migrationFile := range migrations {
+        // check if this migration has already been applied
+        var exists string
+        err := db.Conn.QueryRow("SELECT version FROM schema_migrations WHERE version = ?", migrationFile).Scan(&exists)
+        if err == nil {
+            // already applied
+            continue
+        }
+        if err != sql.ErrNoRows {
+            return fmt.Errorf("could not check migration %s: %w", migrationFile, err)
+        }
+
+        query, err := ioutil.ReadFile(migrationFile)
+        if err != nil {
+            return fmt.Errorf("could not read migration file %s: %w", migrationFile, err)
+        }
+
+        tx, err := db.Conn.Begin()
+        if err != nil {
+            return fmt.Errorf("could not begin transaction for migration %s: %w", migrationFile, err)
+        }
+
+        if _, err := tx.Exec(string(query)); err != nil {
+            tx.Rollback()
+            return fmt.Errorf("could not apply migration %s: %w", migrationFile, err)
+        }
+
+        if _, err := tx.Exec("INSERT INTO schema_migrations (version) VALUES (?)", migrationFile); err != nil {
+            tx.Rollback()
+            return fmt.Errorf("could not record migration %s: %w", migrationFile, err)
+        }
+
+        if err := tx.Commit(); err != nil {
+            return fmt.Errorf("could not commit migration %s: %w", migrationFile, err)
+        }
+
+        log.Printf("Migration applied: %s", migrationFile)
+    }
+
+    log.Println("Database migrations checked/applied successfully")
+    return nil
 }
 
-func (db *Database) GetUserByEmail(email string) (*models.User, error) {
-	user := &models.User{}
-	query := "SELECT id, email, role, sick_allowance, annual_allowance, casual_allowance, created_at FROM users WHERE email = ?"
-	err := db.Conn.QueryRow(query, email).Scan(&user.ID, &user.Email, &user.Role, &user.Allowances.Sick, &user.Allowances.Annual, &user.Allowances.Casual, &user.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
-}
 
-func (db *Database) UpdateUserRole(userID string, role string) error {
-	query := "UPDATE users SET role = ? WHERE id = ?"
-	_, err := db.Conn.Exec(query, role, userID)
-	return err
-}
 
-func (db *Database) GetAllUsers() ([]models.User, error) {
-	rows, err := db.Conn.Query("SELECT id, email, role, sick_allowance, annual_allowance, casual_allowance, created_at FROM users")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	users := make([]models.User, 0)
-	for rows.Next() {
-		var user models.User
-		if err := rows.Scan(&user.ID, &user.Email, &user.Role, &user.Allowances.Sick, &user.Allowances.Annual, &user.Allowances.Casual, &user.CreatedAt); err != nil {
-			return nil, err
-		}
-		users = append(users, user)
-	}
-	return users, nil
-}
-
-func (db *Database) UpdateAllUserAllowances(req models.UpdateAllowancesRequest) error {
-	query := "UPDATE users SET sick_allowance = ?, annual_allowance = ?, casual_allowance = ?"
-	_, err := db.Conn.Exec(query, req.Sick, req.Annual, req.Casual)
-	return err
-}
-
-func (db *Database) CreateLeave(leave *models.Leave) error {
-	leave.ID = uuid.New().String()
-	query := "INSERT INTO leaves (id, user_id, type, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	_, err := db.Conn.Exec(query, leave.ID, leave.UserID, leave.Type, leave.StartDate, leave.EndDate, leave.Reason, leave.Status)
-	return err
-}
-
-func (db *Database) GetAllLeaves() ([]models.Leave, error) {
-	query := `
-		SELECT l.id, l.user_id, u.email, l.type, l.start_date, l.end_date, l.reason, l.status, l.approver_comment, l.created_at
-		FROM leaves l
-		JOIN users u ON l.user_id = u.id
-		ORDER BY l.created_at DESC
-	`
-	rows, err := db.Conn.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	leaves := make([]models.Leave, 0)
-	for rows.Next() {
-		var leave models.Leave
-		if err := rows.Scan(&leave.ID, &leave.UserID, &leave.UserEmail, &leave.Type, &leave.StartDate, &leave.EndDate, &leave.Reason, &leave.Status, &leave.ApproverComment, &leave.CreatedAt); err != nil {
-			return nil, err
-		}
-		leaves = append(leaves, leave)
-	}
-	return leaves, nil
-}
-
-func (db *Database) GetLeavesByUserID(userID string) ([]models.Leave, error) {
-	query := `
-		SELECT l.id, l.user_id, u.email, l.type, l.start_date, l.end_date, l.reason, l.status, l.approver_comment, l.created_at
-		FROM leaves l
-		JOIN users u ON l.user_id = u.id
-		WHERE l.user_id = ?
-		ORDER BY l.created_at DESC
-	`
-	rows, err := db.Conn.Query(query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	leaves := make([]models.Leave, 0)
-	for rows.Next() {
-		var leave models.Leave
-		if err := rows.Scan(&leave.ID, &leave.UserID, &leave.UserEmail, &leave.Type, &leave.StartDate, &leave.EndDate, &leave.Reason, &leave.Status, &leave.ApproverComment, &leave.CreatedAt); err != nil {
-			return nil, err
-		}
-		leaves = append(leaves, leave)
-	}
-	return leaves, nil
-}
-
-func (db *Database) GetLeaveByID(leaveID string) (*models.Leave, error) {
-	leave := &models.Leave{}
-	query := `
-		SELECT l.id, l.user_id, u.email, l.type, l.start_date, l.end_date, l.reason, l.status, l.approver_comment, l.created_at
-		FROM leaves l
-		JOIN users u ON l.user_id = u.id
-		WHERE l.id = ?
-	`
-	err := db.Conn.QueryRow(query, leaveID).Scan(&leave.ID, &leave.UserID, &leave.UserEmail, &leave.Type, &leave.StartDate, &leave.EndDate, &leave.Reason, &leave.Status, &leave.ApproverComment, &leave.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return leave, nil
-}
-
-func (db *Database) CreateUser(email string) (*models.User, error) {
-	user := &models.User{
-		ID:    uuid.New().String(),
-		Email: email,
-		Role:  "user",
-		Allowances: models.Allowance{
-			Annual: 20,
-			Sick:   10,
-			Casual: 5,
-		},
-	}
-	query := "INSERT INTO users (id, email, role, annual_allowance, sick_allowance, casual_allowance) VALUES (?, ?, ?, ?, ?, ?)"
-	_, err := db.Conn.Exec(query, user.ID, user.Email, user.Role, user.Allowances.Annual, user.Allowances.Sick, user.Allowances.Casual)
-	if err != nil {
-		return nil, err
-	}
-	return db.GetUserByEmail(email)
-}
-
-func (db *Database) UpdateLeaveStatus(leaveID string, status string, comment *string) error {
-	query := "UPDATE leaves SET status = ?, approver_comment = ? WHERE id = ?"
-	_, err := db.Conn.Exec(query, status, comment, leaveID)
-	return err
-}
-
-func (db *Database) DeleteLeave(leaveID string) error {
-	query := "DELETE FROM leaves WHERE id = ?"
-	_, err := db.Conn.Exec(query, leaveID)
-	return err
-}
