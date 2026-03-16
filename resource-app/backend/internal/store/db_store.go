@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"resource-app/internal/models"
+	"resource-app/internal/resource"
 )
 
 // DBStore handles database operations
@@ -18,32 +19,6 @@ type DBStore struct {
 // NewDBStore creates a new DBStore
 func NewDBStore(db *gorm.DB) *DBStore {
 	return &DBStore{db: db}
-}
-
-// --- Resources ---
-
-func (s *DBStore) GetResources() ([]models.Resource, error) {
-	var resources []models.Resource
-	result := s.db.Find(&resources)
-	return resources, result.Error
-}
-
-func (s *DBStore) AddResource(resource *models.Resource) error {
-	return s.db.Create(resource).Error
-}
-
-func (s *DBStore) UpdateResource(resource *models.Resource) error {
-	return s.db.Save(resource).Error
-}
-
-func (s *DBStore) DeleteResource(id string) error {
-	return s.db.Delete(&models.Resource{}, "id = ?", id).Error
-}
-
-func (s *DBStore) GetResourceByID(id string) (*models.Resource, error) {
-	var resource models.Resource
-	result := s.db.First(&resource, "id = ?", id)
-	return &resource, result.Error
 }
 
 // --- Bookings ---
@@ -58,8 +33,8 @@ func (s *DBStore) CreateBooking(booking *models.Booking) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. Lock the resource to serialize bookings for this resource
 		// This prevents race conditions where two users try to book the same slot simultaneously
-		var resource models.Resource
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&resource, "id = ?", booking.ResourceID).Error; err != nil {
+		var lockedResource resource.Resource
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&lockedResource, "id = ?", booking.ResourceID).Error; err != nil {
 			return err
 		}
 
@@ -100,8 +75,8 @@ func (s *DBStore) RescheduleBooking(id string, start, end time.Time) error {
 		}
 
 		// 1. Lock the resource to prevent concurrent modifications
-		var resource models.Resource
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&resource, "id = ?", booking.ResourceID).Error; err != nil {
+		var lockedResource resource.Resource
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&lockedResource, "id = ?", booking.ResourceID).Error; err != nil {
 			return err
 		}
 
@@ -145,8 +120,9 @@ type ResourceUsageStats struct {
 func (s *DBStore) GetUtilizationStats() ([]ResourceUsageStats, error) {
 	// This is a simplified implementation. In a real app, you'd likely do this with a complex SQL query.
 	// For now, we'll fetch resources and bookings and calculate in memory to match the mock implementation.
-
-	resources, err := s.GetResources()
+	
+	resourceRepo := resource.NewGormRepository(s.db)
+	resources, err := resourceRepo.GetResources()
 	if err != nil {
 		return nil, err
 	}

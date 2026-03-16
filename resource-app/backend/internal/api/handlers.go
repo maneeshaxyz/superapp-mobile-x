@@ -13,72 +13,6 @@ import (
 	usr "resource-app/internal/user"
 )
 
-// --- Resources ---
-
-func HandleGetResources(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		resources, err := store.GetResources()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch resources"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": resources})
-	}
-}
-
-func HandleAddResource(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req models.Resource
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		req.ID = uuid.New().String()
-		req.IsActive = true
-		req.CreatedAt = time.Now()
-
-		if err := store.AddResource(&req); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create resource"})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{"success": true, "data": req})
-	}
-}
-
-func HandleUpdateResource(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		var req models.Resource
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Ensure ID matches URL param
-		req.ID = id
-
-		if err := store.UpdateResource(&req); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update resource"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": req})
-	}
-}
-
-func HandleDeleteResource(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		if err := store.DeleteResource(id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete resource"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": true})
-	}
-}
-
 // --- Bookings ---
 
 func HandleGetBookings(store *store.DBStore) gin.HandlerFunc {
@@ -203,3 +137,4 @@ func HandleGetStats(store *store.DBStore) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": stats})
 	}
 }
+

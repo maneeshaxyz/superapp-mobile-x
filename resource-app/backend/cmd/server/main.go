@@ -17,6 +17,7 @@ import (
 	"resource-app/internal/db"
 	"resource-app/internal/store"
 	"resource-app/internal/user"
+	"resource-app/internal/resource"
 )
 
 func main() {
@@ -62,6 +63,12 @@ func main() {
 	userRepo := user.NewGormUserRepository(database)
 	userService := user.NewService(userRepo)
 
+	// Initialize resource repository
+	resourceRepo := resource.NewGormRepository(database)
+
+	// Initialize resource service
+	resourceService := resource.NewService(resourceRepo)
+
 	// Create Gin router
 	r := gin.Default()
 
@@ -79,6 +86,8 @@ func main() {
 	apiGroup := r.Group("/api")
 
 	// Apply authentication middleware if JWKS_URL is set, otherwise use Dev mode
+
+	// Apply authentication middleware if JWKS_URL is set
 	if os.Getenv("JWKS_URL") != "" {
 		apiGroup.Use(auth.AuthMiddleware(userService))
 	} else {
@@ -89,10 +98,10 @@ func main() {
 	user.RegisterRoutes(apiGroup, userService)
 
 	// Resources
-	apiGroup.GET("/resources", api.HandleGetResources(dbStore))
-	apiGroup.POST("/resources", api.HandleAddResource(dbStore))
-	apiGroup.PUT("/resources/:id", api.HandleUpdateResource(dbStore))
-	apiGroup.DELETE("/resources/:id", api.HandleDeleteResource(dbStore))
+	apiGroup.GET("/resources", resource.HandleGetResources(resourceService))
+	apiGroup.POST("/resources", resource.HandleAddResource(resourceService))
+	apiGroup.PUT("/resources/:id", resource.HandleUpdateResource(resourceService))
+	apiGroup.DELETE("/resources/:id", resource.HandleDeleteResource(resourceService))
 
 	// Bookings
 	apiGroup.GET("/bookings", api.HandleGetBookings(dbStore))
@@ -117,6 +126,7 @@ func main() {
 	// Start server
 	port := config.GetEnv("PORT", config.DefaultPort)
 	log.Printf("Starting %s on port %s", config.ServiceName, port)
+
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)

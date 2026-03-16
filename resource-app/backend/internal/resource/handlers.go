@@ -1,0 +1,66 @@
+package resource
+
+import (
+	"net/http"
+	"github.com/gin-gonic/gin"
+)
+
+func HandleGetResources(svc *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		resources, err := svc.GetResources()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch resources"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": resources})
+	}
+}
+
+func HandleAddResource(svc *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req Resource
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if err := svc.AddResource(&req); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create resource"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{"success": true, "data": req})
+	}
+}
+
+func HandleUpdateResource(svc *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req Resource
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Ensure ID matches URL param
+		req.ID = id
+
+		if err := svc.UpdateResource(&req); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update resource"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": req})
+	}
+}
+
+func HandleDeleteResource(svc *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := svc.DeleteResource(id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete resource"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": true})
+	}
+}
