@@ -5,14 +5,6 @@ import (
 	"time"
 )
 
-// UserRole represents the role of a user
-type UserRole string
-
-const (
-	RoleUser  UserRole = "USER"
-	RoleAdmin UserRole = "ADMIN"
-)
-
 // BookingStatus represents the status of a booking
 type BookingStatus string
 
@@ -25,16 +17,6 @@ const (
 	StatusCheckedIn BookingStatus = "checked_in"
 	StatusProposed  BookingStatus = "proposed"
 )
-
-// User represents a user in the system
-type User struct {
-	ID         string   `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Email      string   `json:"email" gorm:"uniqueIndex;type:varchar(255);not null"`
-	Role       UserRole `json:"role" gorm:"type:varchar(20);default:'USER'"`
-	Avatar     string   `json:"avatar" gorm:"type:varchar(255)"`
-	Department string   `json:"department" gorm:"type:varchar(100)"`
-	CreatedAt  time.Time `json:"createdAt" gorm:"autoCreateTime"`
-}
 
 // Resource represents a bookable resource
 type Resource struct {

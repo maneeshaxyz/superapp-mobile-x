@@ -16,6 +16,7 @@ import (
 	"resource-app/internal/config"
 	"resource-app/internal/db"
 	"resource-app/internal/store"
+	"resource-app/internal/user"
 )
 
 func main() {
@@ -57,6 +58,10 @@ func main() {
 	// Initialize store
 	dbStore := store.NewDBStore(database)
 
+	// Initialize user service
+	userRepo := user.NewGormUserRepository(database)
+	userService := user.NewService(userRepo)
+
 	// Create Gin router
 	r := gin.Default()
 
@@ -72,15 +77,16 @@ func main() {
 
 	// API Routes
 	apiGroup := r.Group("/api")
-	
-	// Apply authentication middleware if JWKS_URL is set
+
+	// Apply authentication middleware if JWKS_URL is set, otherwise use Dev mode
 	if os.Getenv("JWKS_URL") != "" {
-		apiGroup.Use(auth.AuthMiddleware(dbStore))
+		apiGroup.Use(auth.AuthMiddleware(userService))
+	} else {
+		apiGroup.Use(auth.DevAuthMiddleware(userService))
 	}
 
 	// Users
-	apiGroup.GET("/users", api.HandleGetUsers(dbStore))
-	apiGroup.PATCH("/users/:id/role", api.HandleUpdateUserRole(dbStore))
+	user.RegisterRoutes(apiGroup, userService)
 
 	// Resources
 	apiGroup.GET("/resources", api.HandleGetResources(dbStore))
@@ -111,7 +117,7 @@ func main() {
 	// Start server
 	port := config.GetEnv("PORT", config.DefaultPort)
 	log.Printf("Starting %s on port %s", config.ServiceName, port)
-	
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}

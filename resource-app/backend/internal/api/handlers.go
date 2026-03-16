@@ -10,42 +10,8 @@ import (
 	"resource-app/internal/auth"
 	"resource-app/internal/models"
 	"resource-app/internal/store"
+	usr "resource-app/internal/user"
 )
-
-// --- Users ---
-
-func HandleGetUsers(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		users, err := store.GetUsers()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": users})
-	}
-}
-
-func HandleUpdateUserRole(store *store.DBStore) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userID := c.Param("id")
-		var req struct {
-			Role models.UserRole `json:"role" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		if err := store.UpdateUserRole(userID, req.Role); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user role"})
-			return
-		}
-
-		// Fetch updated user to return
-		// Note: In a real app, we might want to return the updated user object
-		c.JSON(http.StatusOK, gin.H{"success": true})
-	}
-}
 
 // --- Resources ---
 
@@ -146,7 +112,7 @@ func HandleCreateBooking(store *store.DBStore) gin.HandlerFunc {
 		req.CreatedAt = time.Now()
 
 		// Auto-confirm for admins, pending for users
-		if user.Role == models.RoleAdmin {
+		if user.Role == usr.RoleAdmin {
 			req.Status = models.StatusConfirmed
 		} else {
 			req.Status = models.StatusPending

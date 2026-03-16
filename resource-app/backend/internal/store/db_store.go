@@ -20,31 +20,6 @@ func NewDBStore(db *gorm.DB) *DBStore {
 	return &DBStore{db: db}
 }
 
-// --- Users ---
-
-func (s *DBStore) GetUsers() ([]models.User, error) {
-	var users []models.User
-	result := s.db.Find(&users)
-	return users, result.Error
-}
-
-func (s *DBStore) GetUserByEmail(email string) (*models.User, error) {
-	var user models.User
-	result := s.db.Where("email = ?", email).First(&user)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &user, nil
-}
-
-func (s *DBStore) CreateUser(user *models.User) error {
-	return s.db.Create(user).Error
-}
-
-func (s *DBStore) UpdateUserRole(userID string, role models.UserRole) error {
-	return s.db.Model(&models.User{}).Where("id = ?", userID).Update("role", role).Error
-}
-
 // --- Resources ---
 
 func (s *DBStore) GetResources() ([]models.Resource, error) {
@@ -170,7 +145,7 @@ type ResourceUsageStats struct {
 func (s *DBStore) GetUtilizationStats() ([]ResourceUsageStats, error) {
 	// This is a simplified implementation. In a real app, you'd likely do this with a complex SQL query.
 	// For now, we'll fetch resources and bookings and calculate in memory to match the mock implementation.
-	
+
 	resources, err := s.GetResources()
 	if err != nil {
 		return nil, err

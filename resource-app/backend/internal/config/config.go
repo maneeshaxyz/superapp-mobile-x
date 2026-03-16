@@ -7,10 +7,10 @@ import (
 const (
 	ServiceName = "resource-app"
 	DefaultPort = "8082"
-	
+
 	// Database defaults
 	DefaultDatabaseURL = "root:password@tcp(localhost:3306)/resource_app?charset=utf8mb4&parseTime=True&loc=Local"
-	
+
 	// Connection pool settings
 	ConnMaxLifetimeMinutes = 5
 	MaxIdleConns           = 10
