@@ -1,6 +1,7 @@
-import { PublicHoliday } from "../types";
-import { client as api } from "../api/client";
-import { bridge } from "../bridge";
+
+import { PublicHoliday } from "./types";
+import { httpClient } from "../../api/client";
+import { bridge } from "../../bridge";
 
 const CACHE_KEY = "holidays_cache";
 const CACHE_DURATION_DAYS = 7; // Refresh every 7 days
@@ -26,9 +27,11 @@ export const holidayService = {
       }
 
       // 2. Fetch from backend API
-      const response = await api.getHolidays();
+      // Note: Step 1 will remove getHolidays from client.ts eventually,
+      // but for now we follow the same path.
+      const response = await httpClient.get<{ data: PublicHoliday[] }>('/holidays');
 
-      if (!response.success || !response.data) {
+      if (response.status !== 200 || !response.data?.data) {
         console.warn(
           "Failed to fetch holidays from API, using cached data if available"
         );
@@ -37,7 +40,7 @@ export const holidayService = {
         );
       }
 
-      const holidays = response.data as PublicHoliday[];
+      const holidays = response.data.data;
 
       // 3. Cache to bridge storage
       await bridge.saveLocalData(CACHE_KEY, {

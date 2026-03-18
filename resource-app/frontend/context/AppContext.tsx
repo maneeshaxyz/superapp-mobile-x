@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Resource, Booking, UserRole, ApiResponse, ResourceUsageStats, BookingStatus, PublicHoliday } from '../types';
+import { User, Resource, Booking, UserRole, ApiResponse, ResourceUsageStats, BookingStatus } from '../types';
 import { client as api } from '../api/client';
-import { holidayService } from '../services/holidayService';
 import { bridge } from '../bridge';
 
 interface AppContextType {
@@ -10,7 +9,6 @@ interface AppContextType {
   resources: Resource[];
   bookings: Booking[];
   stats: ResourceUsageStats[];
-  holidays: PublicHoliday[];
   isLoading: boolean;
   error: string | null;
 
@@ -36,7 +34,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [resources, setResources] = useState<Resource[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<ResourceUsageStats[]>([]);
-  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,11 +50,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const currentYear = new Date().getFullYear();
 
-      const [usersRes, resRes, bookRes, holidaysData] = await Promise.all([
+      const [usersRes, resRes, bookRes] = await Promise.all([
         api.getUsers(),
         api.getResources(),
-        api.getBookings(),
-        holidayService.getHolidays(currentYear)
+        api.getBookings()
       ]);
 
       if (!usersRes.success && usersRes.error?.includes('Network')) {
@@ -79,9 +75,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (resRes.success && resRes.data) setResources(resRes.data);
       if (bookRes.success && bookRes.data) setBookings(bookRes.data);
 
-      // Load holidays for current and next year to handle year-boundaries in calendar
-      const nextYearHolidays = await holidayService.getHolidays(currentYear + 1);
-      setHolidays([...holidaysData, ...nextYearHolidays]);
 
     } catch (err: unknown) {
       console.error("Failed to load data", err);
@@ -171,7 +164,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       resources,
       bookings,
       stats,
-      holidays,
       isLoading,
       error,
       refreshData: fetchData,

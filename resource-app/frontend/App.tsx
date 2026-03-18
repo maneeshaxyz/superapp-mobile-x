@@ -78,10 +78,14 @@ const AppContent = () => {
   );
 };
 
+import { HolidayProvider } from './domains/holiday/context';
+
 const App = () => (
-  <AppProvider>
-    <AppContent />
-  </AppProvider>
+  <HolidayProvider>
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  </HolidayProvider>
 );
 
 export default App;

@@ -1,11 +1,13 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import { useHoliday } from '../domains/holiday/context';
 import { BookingStatus, UserRole } from '../types';
 import { endOfMonth, eachDayOfInterval, isSameDay, getDay, format } from 'date-fns';
 
 export const useCalendar = () => {
-  const { bookings, currentUser, resources, allUsers, holidays } = useApp();
+  const { bookings, currentUser, resources, allUsers } = useApp();
+  const { holidays } = useHoliday();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'mine' | 'all'>('mine');

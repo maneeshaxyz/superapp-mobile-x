@@ -158,7 +158,5 @@ export const client = {
     // --- Stats ---
     getUtilizationStats: () => handleResponse<ResourceUsageStats[]>(httpClient.get('/stats')),
 
-    // --- Holidays ---
-    getHolidays: () => handleResponse<PublicHoliday[]>(httpClient.get('/holidays')),
 };
 
