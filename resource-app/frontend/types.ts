@@ -1,9 +1,5 @@
 export type { ApiResponse } from './api/types';
-
-export enum UserRole {
-  USER = 'USER',
-  ADMIN = 'ADMIN',
-}
+export { UserRole } from './features/user/types';
 
 export enum ResourceType {
   MEETING_ROOM = 'Conference Hall',
@@ -34,13 +30,7 @@ export interface FormField {
   required: boolean;
 }
 
-export interface User {
-  id: string;
-  email: string; // Primary identifier
-  role: UserRole;
-  avatar?: string;
-  department?: string;
-}
+export type { User } from './features/user/types';
 
 export interface Resource {
   id: string;

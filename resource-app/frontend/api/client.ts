@@ -122,12 +122,6 @@ const handleResponse = async <T>(request: Promise<{ data: { data: T } }>): Promi
 };
 
 export const client = {
-    // --- Users ---
-    getUsers: () => handleResponse<User[]>(httpClient.get('/users')),
-
-    updateUserRole: (userId: string, role: UserRole) =>
-        handleResponse<void>(httpClient.patch(`/users/${userId}/role`, { role })),
-
     // --- Resources ---
     getResources: () => handleResponse<Resource[]>(httpClient.get('/resources')),
 

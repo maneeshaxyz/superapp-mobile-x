@@ -1,23 +1,25 @@
 
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { useUser, UserProvider } from './features/user';
 import { UserRole, Resource } from './types';
 
 // Views
 import { CalendarView } from './views/CalendarView';
 import { CatalogView } from './views/CatalogView';
-import { AdminView } from './views/AdminView';
+import { AdminView } from './features/user/views/AdminView';
 import { BookingView } from './views/BookingView';
 import { PageLoader, Button } from './components/UI';
 import { BottomNav, Header } from './components/Layout';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 const AppContent = () => {
-  const { currentUser, isLoading, error, refreshData } = useApp();
+  const { isLoading, error, refreshData } = useApp();
+  const { currentUser, isLoading: isUserLoading } = useUser();
   const [currentTab, setCurrentTab] = useState('calendar');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading || isUserLoading) return <PageLoader />;
 
   if (error) {
     return (
@@ -81,11 +83,13 @@ const AppContent = () => {
 import { HolidayProvider } from './features/holiday/context';
 
 const App = () => (
-  <HolidayProvider>
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  </HolidayProvider>
+  <UserProvider>
+    <HolidayProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </HolidayProvider>
+  </UserProvider>
 );
 
 export default App;

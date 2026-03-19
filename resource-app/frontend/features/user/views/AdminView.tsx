@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../../context/AppContext';
+import { useUser } from '../context';
 import { Plus, Trash2, CheckCircle, Edit2, User, Shield } from 'lucide-react';
-import { cn } from '../utils/cn';
-import { Card, Button, Badge, PageLoader, EmptyState, Modal, Input, Label } from '../components/UI';
-import { BookingStatus, UserRole, Resource } from '../types';
+import { cn } from '../../../utils/cn';
+import { Card, Button, Badge, PageLoader, EmptyState, Modal, Input, Label } from '../../../components/UI';
+import { BookingStatus, UserRole, Resource } from '../../../types';
 import { format } from 'date-fns';
-import { CreateResourceView } from './CreateResourceView';
-import { DynamicIcon } from '../components/Icons';
+import { CreateResourceView } from '../../../views/CreateResourceView';
+import { DynamicIcon } from '../../../components/Icons';
 
 export const AdminView = () => {
-  const { resources, bookings, stats, allUsers, currentUser, isLoading, deleteResource, processBooking, updateUserRole, rescheduleBooking, fetchStats } = useApp();
+  const { resources, bookings, stats, isLoading, deleteResource, processBooking, rescheduleBooking, fetchStats } = useApp();
+  const { allUsers, currentUser, updateUserRole } = useUser();
   const [tab, setTab] = useState<'approvals' | 'users' | 'manage' | 'analytics'>('approvals');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 

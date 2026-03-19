@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useUser } from '../features/user';
 import { Resource, BookingStatus } from '../types';
 import { addDays, addMinutes, addHours, isBefore, format } from 'date-fns';
 import { APP_CONFIG } from '../config';
 
 export const useBooking = (resource: Resource, onSuccess: () => void) => {
   const { createBooking, bookings } = useApp();
+  const { currentUser } = useUser();
   const [step, setStep] = useState<'time' | 'form'>('time');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -138,6 +140,7 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
 
       const res = await createBooking({
         resourceId: resource.id,
+        userId: currentUser?.id,
         start: startIso,
         end: endIso,
         details: formData

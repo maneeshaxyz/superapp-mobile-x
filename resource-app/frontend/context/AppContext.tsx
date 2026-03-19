@@ -1,11 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Resource, Booking, UserRole, ApiResponse, ResourceUsageStats, BookingStatus } from '../types';
+import { Resource, Booking, ApiResponse, ResourceUsageStats, BookingStatus } from '../types';
 import { client as api } from '../api/client';
-import { bridge } from '../bridge';
 
 interface AppContextType {
-  currentUser: User | null;
-  allUsers: User[]; // Kept for admin view if needed, but not for switching
   resources: Resource[];
   bookings: Booking[];
   stats: ResourceUsageStats[];
@@ -21,7 +18,6 @@ interface AppContextType {
   addResource: (data: Omit<Resource, 'id'>) => Promise<boolean>;
   updateResource: (data: Resource) => Promise<boolean>;
   deleteResource: (id: string) => Promise<void>;
-  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
   processBooking: (id: string, status: BookingStatus, reason?: string) => Promise<void>;
   rescheduleBooking: (id: string, start: string, end: string) => Promise<ApiResponse<Booking>>;
 }
@@ -29,8 +25,6 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<ResourceUsageStats[]>([]);
@@ -40,35 +34,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const fetchData = async () => {
     setError(null);
     try {
-      // 1. Get current user identity from bridge
-      const tokenData = await bridge.getToken();
-      const userEmail = tokenData.email;
-
-      if (!userEmail) {
-        throw new Error("Could not identify user from token");
-      }
-
-      const [usersRes, resRes, bookRes] = await Promise.all([
-        api.getUsers(),
+      const [resRes, bookRes] = await Promise.all([
         api.getResources(),
         api.getBookings()
       ]);
-
-      if (!usersRes.success && usersRes.error?.includes('Network')) {
-        throw new Error(usersRes.error);
-      }
-
-      if (usersRes.success && usersRes.data) {
-        setAllUsers(usersRes.data);
-        // Find current user by email
-        const me = usersRes.data.find(u => u.email === userEmail);
-        if (me) {
-          setCurrentUser(me);
-        } else {
-          // Should not happen if backend auto-creates user, but handle gracefully
-          console.warn("User not found in user list despite valid token");
-        }
-      }
 
       if (resRes.success && resRes.data) setResources(resRes.data);
       if (bookRes.success && bookRes.data) setBookings(bookRes.data);
@@ -93,10 +62,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const createBooking = async (data: Record<string, unknown>) => {
-    const res = await api.createBooking({
-      ...data,
-      userId: currentUser?.id
-    });
+    const res = await api.createBooking(data);
     if (res.success) await fetchData();
     return res;
   };
@@ -150,15 +116,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return false;
   };
 
-  const updateUserRole = async (userId: string, role: UserRole) => {
-    await api.updateUserRole(userId, role);
-    await fetchData();
-  };
-
   return (
     <AppContext.Provider value={{
-      currentUser,
-      allUsers,
       resources,
       bookings,
       stats,
@@ -171,7 +130,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addResource,
       updateResource,
       deleteResource,
-      updateUserRole,
       processBooking,
       rescheduleBooking,
       fetchStats
