@@ -20,4 +20,5 @@ var (
 	ErrBookingNotFound        = errors.New("booking not found")
 	ErrBookingConflict        = errors.New("booking conflict: time slot is already booked")
 	ErrRescheduleSlotConflict = errors.New("reschedule conflict: new time slot is already booked")
+	ErrBookingPermissionDenied = errors.New("permission denied: insufficient permissions to book this resource")
 )

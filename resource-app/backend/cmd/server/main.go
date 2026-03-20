@@ -69,19 +69,17 @@ func main() {
 
 	// Initialize booking repository
 	bookingRepo := booking.NewGormRepository(database)
-	// Initialize booking service
-	bookingService := booking.NewService(bookingRepo)
+	// Initialize permission repository
+	permissionRepo := permission.NewGormRepository(database)
+	// Initialize permission service
+	permissionService := permission.NewService(permissionRepo)
+	// Initialize booking service with permission service dependency
+	bookingService := booking.NewService(bookingRepo, permissionService)
 
 	// Initialize group repository
 	groupRepo := group.NewGormRepository(database)
 	// Initialize group service
 	groupService := group.NewService(groupRepo)
-
-	// Initialize permission repository
-	permissionRepo := permission.NewGormRepository(database)
-	// Initialize permission service
-	permissionService := permission.NewService(permissionRepo)
-
 
 	// Create Gin router
 	r := gin.Default()
@@ -107,37 +105,37 @@ func main() {
 	} else {
 		apiGroup.Use(auth.DevAuthMiddleware(userService))
 	}
+	adminGroup := apiGroup.Group("")
+	adminGroup.Use(auth.RequireAdminMiddleware())
 
 	// Users
 	user.RegisterRoutes(apiGroup, userService)
 
 	// Groups
-	apiGroup.POST("/groups", group.HandleCreateGroup(groupService))
-	apiGroup.GET("/groups", group.HandleGetGroups(groupService))
-	apiGroup.PATCH("/groups/:id", group.HandleUpdateGroup(groupService))
-	apiGroup.DELETE("/groups/:id", group.HandleDeleteGroup(groupService))
+	adminGroup.POST("/groups", group.HandleCreateGroup(groupService))
+	adminGroup.GET("/groups", group.HandleGetGroups(groupService))
+	adminGroup.PATCH("/groups/:id", group.HandleUpdateGroup(groupService))
+	adminGroup.DELETE("/groups/:id", group.HandleDeleteGroup(groupService))
 	// Group membership
-	apiGroup.GET("/groups/:id/users", group.HandleGetGroupMembers(groupService))
-	apiGroup.POST("/groups/:id/users", group.HandleAddUsersToGroup(groupService))
-	apiGroup.DELETE("/groups/:id/users/:userId", group.HandleRemoveUserFromGroup(groupService))
+	adminGroup.GET("/groups/:id/users", group.HandleGetGroupMembers(groupService))
+	adminGroup.POST("/groups/:id/users", group.HandleAddUsersToGroup(groupService))
+	adminGroup.DELETE("/groups/:id/users/:userId", group.HandleRemoveUserFromGroup(groupService))
 	// Group permissions
-	apiGroup.POST("/resource-permissions", permission.HandleCreatePermission(permissionService))
-	apiGroup.PATCH("/resource-permissions/:id", permission.HandleUpdatePermissionType(permissionService))
-	apiGroup.DELETE("/resource-permissions/:id", permission.HandleDeletePermission(permissionService))
-	apiGroup.GET("/groups/:id/permissions", permission.HandleGetGroupPermissions(permissionService))
-
-
+	adminGroup.POST("/resource-permissions", permission.HandleCreatePermission(permissionService))
+	adminGroup.PATCH("/resource-permissions/:id", permission.HandleUpdatePermissionType(permissionService))
+	adminGroup.DELETE("/resource-permissions/:id", permission.HandleDeletePermission(permissionService))
+	adminGroup.GET("/groups/:id/permissions", permission.HandleGetGroupPermissions(permissionService))
 
 	// Resources
 	apiGroup.GET("/resources", resource.HandleGetResources(resourceService))
-	apiGroup.POST("/resources", resource.HandleAddResource(resourceService))
-	apiGroup.PUT("/resources/:id", resource.HandleUpdateResource(resourceService))
-	apiGroup.DELETE("/resources/:id", resource.HandleDeleteResource(resourceService))
+	adminGroup.POST("/resources", resource.HandleAddResource(resourceService))
+	adminGroup.PUT("/resources/:id", resource.HandleUpdateResource(resourceService))
+	adminGroup.DELETE("/resources/:id", resource.HandleDeleteResource(resourceService))
 
 	// Bookings
 	apiGroup.GET("/bookings", booking.HandleGetBookings(bookingService))
 	apiGroup.POST("/bookings", booking.HandleCreateBooking(bookingService))
-	apiGroup.PATCH("/bookings/:id/process", booking.HandleProcessBooking(bookingService))//booking status update (confirm/reject)
+	apiGroup.PATCH("/bookings/:id/process", booking.HandleProcessBooking(bookingService)) //booking status update (confirm/reject)
 	apiGroup.PATCH("/bookings/:id/reschedule", booking.HandleRescheduleBooking(bookingService))
 	apiGroup.DELETE("/bookings/:id", booking.HandleCancelBooking(bookingService))
 

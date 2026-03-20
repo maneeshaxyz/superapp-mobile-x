@@ -34,3 +34,11 @@ func (s *Service) DeletePermission(id string) error {
 func (s *Service) GetPermissionsByGroupID(groupID string) ([]GroupPermissionResult, error) {
 	return s.repo.GetPermissionsByGroupID(groupID)
 }
+
+func (s *Service) HasRequestPermission(userID, resourceID string) (bool, error) {
+	return s.repo.HasUserPermissionForResource(userID, resourceID, PermissionTypeRequest)
+}
+
+func (s *Service) HasApprovePermission(userID, resourceID string) (bool, error) {
+	return s.repo.HasUserPermissionForResource(userID, resourceID, PermissionTypeApprove)
+}

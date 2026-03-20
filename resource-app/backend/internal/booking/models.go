@@ -17,7 +17,6 @@ type Booking struct {
 	Details         json.RawMessage `json:"details" gorm:"type:json"` // Stored as JSON
 	CreatedAt       time.Time       `json:"createdAt" gorm:"autoCreateTime"`
 	UpdatedAt       time.Time       `json:"updatedAt" gorm:"autoUpdateTime"`
-	
 }
 
 //Stats

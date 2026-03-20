@@ -12,6 +12,7 @@ type Repository interface {
 	UpdatePermissionType(id string, permissionType PermissionType) (*ResourcePermission, error)
 	DeletePermission(id string) error
 	GetPermissionsByGroupID(groupID string) ([]GroupPermissionResult, error)
+	HasUserPermissionForResource(userID, resourceID string, permissionType PermissionType) (bool, error)
 }
 
 type GormRepository struct {
@@ -23,32 +24,22 @@ func NewGormRepository(db *gorm.DB) *GormRepository {
 }
 
 func (r *GormRepository) CreatePermission(permission *ResourcePermission) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		var resourceCount int64
-		if err := tx.Table("resources").Where("id = ?", permission.ResourceID).Count(&resourceCount).Error; err != nil {
-			return err
-		}
-		if resourceCount == 0 {
-			return ErrResourceNotFound
-		}
-
-		var groupCount int64
-		if err := tx.Table("groups").Where("id = ?", permission.GroupID).Count(&groupCount).Error; err != nil {
-			return err
-		}
-		if groupCount == 0 {
-			return ErrGroupNotFound
-		}
-
-		if err := tx.Create(permission).Error; err != nil {
-			if isDuplicateKeyError(err) {
-				return ErrPermissionConflict
+	if err := r.db.Create(permission).Error; err != nil {
+		if fkViolation, constraintName := foreignKeyConstraintError(err); fkViolation {
+			switch constraintName {
+			case "fk_resource_permissions_resource":
+				return ErrResourceNotFound
+			case "fk_resource_permissions_group":
+				return ErrGroupNotFound
 			}
-			return err
 		}
+		if isDuplicateKeyError(err) {
+			return ErrPermissionConflict
+		}
+		return err
+	}
 
-		return nil
-	})
+	return nil
 }
 
 func (r *GormRepository) UpdatePermissionType(id string, permissionType PermissionType) (*ResourcePermission, error) {
@@ -97,24 +88,22 @@ func (r *GormRepository) DeletePermission(id string) error {
 }
 
 func (r *GormRepository) GetPermissionsByGroupID(groupID string) ([]GroupPermissionResult, error) {
-	var permissions []GroupPermissionResult
-	err := r.db.Transaction(func(tx *gorm.DB) error {
-		var groupCount int64
-		if err := tx.Table("groups").Where("id = ?", groupID).Count(&groupCount).Error; err != nil {
-			return err
-		}
-		if groupCount == 0 {
-			return ErrGroupNotFound
-		}
+	var groupCount int64
+	if err := r.db.Table("groups").Where("id = ?", groupID).Count(&groupCount).Error; err != nil {
+		return nil, err
+	}
+	if groupCount == 0 {
+		return nil, ErrGroupNotFound
+	}
 
-		return tx.Table("resource_permissions rp").
-			Select("rp.id, rp.resource_id, r.name AS resource_name, rp.permission_type").
-			Joins("JOIN resources r ON r.id = rp.resource_id").
-			Where("rp.group_id = ?", groupID).
-			Order("r.name ASC").
-			Order("rp.permission_type ASC").
-			Scan(&permissions).Error
-	})
+	var permissions []GroupPermissionResult
+	err := r.db.Table("resource_permissions rp").
+		Select("rp.id, rp.resource_id, r.name AS resource_name, rp.permission_type").
+		Joins("JOIN resources r ON r.id = rp.resource_id").
+		Where("rp.group_id = ?", groupID).
+		Order("r.name ASC").
+		Order("rp.permission_type ASC").
+		Scan(&permissions).Error
 	if err != nil {
 		return nil, err
 	}
@@ -128,4 +117,35 @@ func isDuplicateKeyError(err error) bool {
 	}
 
 	return strings.Contains(strings.ToLower(err.Error()), "duplicate")
+}
+
+func (r *GormRepository) HasUserPermissionForResource(userID, resourceID string, permissionType PermissionType) (bool, error) {
+	var count int64
+	err := r.db.
+		Table("resource_permissions rp").
+		Joins("JOIN user_groups ug ON rp.group_id = ug.group_id").
+		Where("ug.user_id = ? AND rp.resource_id = ? AND rp.permission_type = ?",
+			userID, resourceID, permissionType).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func foreignKeyConstraintError(err error) (bool, string) {
+	mysqlErr, ok := err.(*mysqlDriver.MySQLError)
+	if !ok || mysqlErr.Number != 1452 {
+		return false, ""
+	}
+
+	message := strings.ToLower(mysqlErr.Message)
+	if strings.Contains(message, "fk_resource_permissions_resource") {
+		return true, "fk_resource_permissions_resource"
+	}
+	if strings.Contains(message, "fk_resource_permissions_group") {
+		return true, "fk_resource_permissions_group"
+	}
+
+	return false, ""
 }
