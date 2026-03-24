@@ -45,31 +45,36 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const createBooking = useCallback(async (data: Record<string, unknown>) => {
     const res = await bookingApi.createBooking(data);
-    if (res.success) await fetchBookings();
+    if (res.success && res.data) {
+      setBookings(prev => [...prev, res.data!]);
+    }
     return res as ApiResponse<Booking>;
-  }, [fetchBookings]);
+  }, []);
 
   const cancelBooking = useCallback(async (id: string) => {
     await bookingApi.cancelBooking(id);
-    await fetchBookings();
-  }, [fetchBookings]);
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: BookingStatus.CANCELLED } : b));
+  }, []);
 
   const dismissBooking = useCallback(async (id: string) => {
-    // Dismissing a rejection or proposal effectively cancels it
     await bookingApi.cancelBooking(id);
-    await fetchBookings();
-  }, [fetchBookings]);
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: BookingStatus.CANCELLED } : b));
+  }, []);
 
   const processBooking = useCallback(async (id: string, status: BookingStatus, reason?: string) => {
     await bookingApi.processBooking(id, status, reason);
-    await fetchBookings();
-  }, [fetchBookings]);
+    setBookings(prev => prev.map(b =>
+      b.id === id ? { ...b, status, ...(reason ? { rejectionReason: reason } : {}) } : b
+    ));
+  }, []);
 
   const rescheduleBooking = useCallback(async (id: string, start: string, end: string): Promise<ApiResponse<void>> => {
     const res = await bookingApi.rescheduleBooking(id, start, end);
-    if (res.success) await fetchBookings();
+    if (res.success) {
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, start, end, status: BookingStatus.PROPOSED } : b));
+    }
     return res;
-  }, [fetchBookings]);
+  }, []);
 
   return (
     <BookingContext.Provider value={{

@@ -3,7 +3,7 @@ import { useBookingContext } from '../context';
 import { useUser } from '../../../features/user';
 import { Resource } from '../../../features/resource/types';
 import { BookingStatus } from '../types';
-import { addDays, addMinutes, addHours, isBefore, format } from 'date-fns';
+import { addDays, addMinutes, addHours, isBefore, format, parse, set } from 'date-fns';
 import { APP_CONFIG } from '../../../config';
 
 export const useBooking = (resource: Resource, onSuccess: () => void) => {
@@ -43,7 +43,8 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
   const timeStatus = useMemo(() => {
     if (!startTime || !date) return { valid: false, message: 'Select a time', conflict: null };
 
-    const startDateTime = new Date(`${date}T${startTime}:00`);
+    const baseDate = parse(date, 'yyyy-MM-dd', new Date());
+    const startDateTime = parse(startTime, 'HH:mm', baseDate);
     const endDateTime = addMinutes(startDateTime, duration);
 
     // 1. Past check
@@ -73,8 +74,9 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
     const startVisual = APP_CONFIG.VISUAL_START_HOUR;
     const endVisual = APP_CONFIG.VISUAL_END_HOUR;
 
-    const startOfDay = new Date(`${date}T${startVisual.toString().padStart(2, '0')}:00:00`);
-    const endOfDay = new Date(`${date}T${endVisual.toString().padStart(2, '0')}:00:00`);
+    const baseDate = parse(date, 'yyyy-MM-dd', new Date());
+    const startOfDay = set(baseDate, { hours: startVisual, minutes: 0, seconds: 0, milliseconds: 0 });
+    const endOfDay = set(baseDate, { hours: endVisual, minutes: 0, seconds: 0, milliseconds: 0 });
     const totalMinutes = (endOfDay.getTime() - startOfDay.getTime()) / 60000;
 
     // Existing Bookings
@@ -95,7 +97,7 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
 
     // Current Selection
     if (startTime) {
-      const selfStart = new Date(`${date}T${startTime}:00`);
+      const selfStart = parse(startTime, 'HH:mm', baseDate);
       const selfEnd = addMinutes(selfStart, duration);
       const effectiveStart = selfStart < startOfDay ? startOfDay : selfStart;
       const effectiveEnd = selfEnd > endOfDay ? endOfDay : selfEnd;
@@ -121,7 +123,8 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
       .filter(field => {
         const val = formData[field.id];
         if (field.type === 'boolean') return val === undefined;
-        return !val || val === '';
+        if (field.type === 'number') return val === undefined || val === null || val === '';
+        return !val || (typeof val === 'string' && val.trim() === '');
       });
 
     if (missingFields.length > 0) {
@@ -132,7 +135,8 @@ export const useBooking = (resource: Resource, onSuccess: () => void) => {
     setIsSubmitting(true);
 
     try {
-      const startDateTime = new Date(`${date}T${startTime}:00`);
+      const baseDate = parse(date, 'yyyy-MM-dd', new Date());
+      const startDateTime = parse(startTime, 'HH:mm', baseDate);
       const startIso = startDateTime.toISOString();
       const endIso = addMinutes(startDateTime, duration).toISOString();
 
