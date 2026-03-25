@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useResource } from '../context';
-import { useApp } from '../../../context/AppContext';
+import { useBookingContext } from '../../booking/context';
 import { Resource, BookingStatus } from '../../../types';
 import { Search } from 'lucide-react';
 import { cn } from '../../../utils/cn';
@@ -10,7 +10,7 @@ import { DynamicIcon } from '../../../components/Icons';
 
 export const CatalogView = ({ onSelect }: { onSelect: (r: Resource) => void }) => {
   const { resources } = useResource();
-  const { bookings } = useApp();
+  const { bookings } = useBookingContext();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 

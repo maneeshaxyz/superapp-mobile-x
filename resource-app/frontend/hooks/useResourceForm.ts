@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useResource } from '../features/resource/context';
 import { Resource, ResourceType, FormField, RESOURCE_TYPES } from '../types';
 import { APP_CONFIG } from '../config';
 
 export const useResourceForm = (onClose: () => void, initialData?: Resource) => {
-  const { addResource, updateResource } = useApp();
+  const { addResource, updateResource } = useResource();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- Form State ---

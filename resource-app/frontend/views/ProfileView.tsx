@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useUser } from '../features/user';
 import { Card, Badge, Select, Button } from '../components/UI';
 import { UserRole } from '../types';
 import { Code, LogOut } from 'lucide-react';
 
 export const ProfileView = () => {
-  const { currentUser, allUsers, switchUser } = useApp();
+  const { currentUser, allUsers, switchUser } = useUser();
 
   return (
     <div className="space-y-6 animate-in fade-in pb-6">

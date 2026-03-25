@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useResource } from '../features/resource/context';
+import { useBookingContext } from '../features/booking/context';
 import { Resource, BookingStatus } from '../types';
 import { Search } from 'lucide-react';
 import { cn } from '../utils/cn';
@@ -8,7 +9,8 @@ import { Badge, Input } from '../components/UI';
 import { DynamicIcon } from '../components/Icons';
 
 export const CatalogView = ({ onSelect }: { onSelect: (r: Resource) => void }) => {
-  const { resources, bookings } = useApp();
+  const { resources } = useResource();
+  const { bookings } = useBookingContext();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 

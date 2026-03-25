@@ -1,29 +1,29 @@
 
 import React, { useState } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
 import { useUser, UserProvider } from './features/user';
 import { ResourceProvider, useResource } from './features/resource/context';
+import { BookingProvider, useBookingContext } from './features/booking/context';
 import { UserRole, Resource } from './types';
 
 // Views
 import { CalendarView } from './views/CalendarView';
 import { CatalogView } from './features/resource/views/CatalogView';
 import { AdminView } from './features/user/views/AdminView';
-import { BookingView } from './views/BookingView';
+import { BookingView } from './features/booking/views/BookingView';
 import { PageLoader, Button } from './components/UI';
 import { BottomNav, Header } from './components/Layout';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 const AppContent = () => {
-  const { isLoading, error, refreshData } = useApp();
   const { currentUser, isLoading: isUserLoading } = useUser();
   const { isLoading: isResourceLoading, error: resourceError, refreshResources } = useResource();
+  const { isLoading: isBookingLoading, error: bookingError, refreshBookings } = useBookingContext();
   const [currentTab, setCurrentTab] = useState('calendar');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
-  if (isLoading || isUserLoading || isResourceLoading) return <PageLoader />;
+  if (isUserLoading || isResourceLoading || isBookingLoading) return <PageLoader />;
 
-  const combinedError = error || resourceError;
+  const combinedError = resourceError || bookingError;
 
   if (combinedError) {
     return (
@@ -35,7 +35,7 @@ const AppContent = () => {
         <p className="text-sm text-slate-500 mb-6 max-w-xs">
           {combinedError}.<br />Please ensure the backend server is running on port 3001.
         </p>
-        <Button onClick={() => { refreshData(); refreshResources(); }} variant="primary">
+        <Button onClick={() => { refreshResources(); refreshBookings(); }} variant="primary">
           <RefreshCw className="w-4 h-4 mr-2" />
           Retry Connection
         </Button>
@@ -90,9 +90,9 @@ const App = () => (
   <UserProvider>
     <HolidayProvider>
       <ResourceProvider>
-        <AppProvider>
+        <BookingProvider>
           <AppContent />
-        </AppProvider>
+        </BookingProvider>
       </ResourceProvider>
     </HolidayProvider>
   </UserProvider>

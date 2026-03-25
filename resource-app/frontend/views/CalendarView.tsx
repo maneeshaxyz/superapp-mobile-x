@@ -7,7 +7,7 @@ import { Card, EmptyState, Button, Badge } from '../components/UI';
 import { BookingStatus } from '../types';
 import { useCalendar } from '../hooks/useCalendar';
 import { DynamicIcon } from '../components/Icons';
-import { useApp } from '../context/AppContext';
+import { useBookingContext } from '../features/booking/context';
 
 export const CalendarView = () => {
   const {
@@ -21,7 +21,7 @@ export const CalendarView = () => {
     getResourceDetails, getUserDetails
   } = useCalendar();
 
-  const { bookings, processBooking, dismissBooking } = useApp();
+  const { bookings, processBooking, dismissBooking } = useBookingContext();
 
   // Filter Actionable Items (Proposed or Rejected for current user)
   const actionableBookings = bookings.filter(b =>
