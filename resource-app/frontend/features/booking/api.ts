@@ -19,10 +19,10 @@ export const bookingApi = {
     handle<Booking>(httpClient.post('/bookings', data)),
 
   processBooking: (id: string, status: BookingStatus, rejectionReason?: string) =>
-    handle<void>(httpClient.post(`/bookings/${id}/process`, { status, rejectionReason })),
+    handle<void>(httpClient.patch(`/bookings/${id}/process`, { status, rejectionReason })),
 
   rescheduleBooking: (id: string, start: string, end: string) =>
-    handle<void>(httpClient.post(`/bookings/${id}/reschedule`, { start, end })),
+    handle<void>(httpClient.patch(`/bookings/${id}/reschedule`, { start, end })),
 
   cancelBooking: (id: string) =>
     handle<boolean>(httpClient.delete(`/bookings/${id}`)),

@@ -370,7 +370,14 @@ export const AdminView = () => {
               placeholder="e.g. Maintenance required..."
             />
           </div>
-          <Button variant="danger" className="w-full" onClick={handleReject}>Confirm Rejection</Button>
+          <Button 
+            variant="danger" 
+            className="w-full" 
+            onClick={handleReject}
+            disabled={!rejectReason.trim()}
+          >
+            Confirm Rejection
+          </Button>
         </div>
       </Modal>
 

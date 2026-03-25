@@ -62,9 +62,17 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   const processBooking = useCallback(async (id: string, status: BookingStatus, reason?: string) => {
+    if (status === BookingStatus.REJECTED && !reason?.trim()) {
+      throw new Error('Rejection reason is required');
+    }
+
     await bookingApi.processBooking(id, status, reason);
     setBookings(prev => prev.map(b =>
-      b.id === id ? { ...b, status, ...(reason ? { rejectionReason: reason } : {}) } : b
+      b.id === id ? {
+        ...b,
+        status,
+        ...(status === BookingStatus.REJECTED ? { rejectionReason: reason } : {})
+      } : b
     ));
   }, []);
 
