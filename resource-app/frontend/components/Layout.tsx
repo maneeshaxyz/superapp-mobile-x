@@ -9,9 +9,9 @@ interface HeaderProps {
 }
 
 export const Header = ({ title, subtitle }: HeaderProps) => (
-  <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center animate-in fade-in shrink-0 z-30">
-    <div>
-      <h1 className="text-lg font-bold tracking-tight text-slate-900">{title}</h1>
+  <header className="fixed top-0 left-0 right-0 h-[68px] bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 flex items-center animate-in fade-in z-50 max-w-md mx-auto">
+    <div className="flex flex-col justify-center">
+      <h1 className="text-lg font-bold tracking-tight text-slate-900 leading-tight">{title}</h1>
       {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
     </div>
   </header>

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useUser, UserProvider } from './features/user';
 import { ResourceProvider, useResource } from './features/resource/context';
 import { BookingProvider, useBookingContext } from './features/booking/context';
+import { GroupProvider } from './features/group/context';
 import { UserRole } from './features/user/types';
 import { Resource } from './features/resource/types';
 
@@ -69,7 +70,7 @@ const AppContent = () => {
       {currentTab === 'admin' && <Header title="Admin Dashboard" subtitle="Management & Analytics" />}
 
       {/* Main Content - Scrollable Area */}
-      <main className="flex-1 overflow-y-auto p-4 pb-24 max-w-md mx-auto w-full animate-in fade-in">
+      <main className="flex-1 overflow-y-auto px-4 pb-24 pt-[80px] max-w-md mx-auto w-full animate-in fade-in">
         {currentTab === 'calendar' && <CalendarView />}
         {currentTab === 'catalog' && <CatalogView onSelect={setSelectedResource} />}
         {currentTab === 'admin' && isAdmin && <AdminView />}
@@ -92,7 +93,9 @@ const App = () => (
     <HolidayProvider>
       <ResourceProvider>
         <BookingProvider>
-          <AppContent />
+          <GroupProvider>
+            <AppContent />
+          </GroupProvider>
         </BookingProvider>
       </ResourceProvider>
     </HolidayProvider>
