@@ -13,9 +13,11 @@ type Booking struct {
 	Start           time.Time       `json:"start" gorm:"not null"`
 	End             time.Time       `json:"end" gorm:"not null"`
 	Status          BookingStatus   `json:"status" gorm:"index;type:varchar(20);default:'pending'"`
-	CreatedAt       time.Time       `json:"createdAt" gorm:"autoCreateTime"`
 	RejectionReason *string         `json:"rejectionReason,omitempty" gorm:"type:text"`
 	Details         json.RawMessage `json:"details" gorm:"type:json"` // Stored as JSON
+	CreatedAt       time.Time       `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time       `json:"updatedAt" gorm:"autoUpdateTime"`
+	
 }
 
 //Stats
