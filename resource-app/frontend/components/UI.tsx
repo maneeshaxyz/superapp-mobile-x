@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../utils/cn';
 import { Loader2, ChevronDown, X } from 'lucide-react';
 
@@ -126,7 +126,7 @@ Select.displayName = 'Select';
 export const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-slate-100 shrink-0">
@@ -139,7 +139,8 @@ export const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean, o
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
