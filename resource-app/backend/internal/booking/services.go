@@ -3,17 +3,22 @@ package booking
 import (
 	"time"
 
+	perm "resource-app/internal/permission"
 	usr "resource-app/internal/user"
 
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo Repository
+	repo            Repository
+	permissionSvc   *perm.Service
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, permissionSvc *perm.Service) *Service {
+	return &Service{
+		repo:            repo,
+		permissionSvc:   permissionSvc,
+	}
 }
 
 func (s *Service) GetBookings() ([]Booking, error) {
@@ -21,6 +26,17 @@ func (s *Service) GetBookings() ([]Booking, error) {
 }
 
 func (s *Service) CreateBooking(booking *Booking, userID string, userRole usr.Role) error {
+	// For non-admin users, enforce REQUEST permission check
+	if userRole != usr.RoleAdmin {
+		hasPermission, err := s.permissionSvc.HasRequestPermission(userID, booking.ResourceID)
+		if err != nil {
+			return err
+		}
+		if !hasPermission {
+			return ErrBookingPermissionDenied
+		}
+	}
+
 	booking.ID = uuid.New().String()
 	booking.UserID = userID
 	booking.CreatedAt = time.Now()

@@ -1,9 +1,11 @@
 package permission
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func HandleCreatePermission(svc *Service) gin.HandlerFunc {
@@ -14,6 +16,16 @@ func HandleCreatePermission(svc *Service) gin.HandlerFunc {
 			return
 		}
 
+		if _, err := uuid.Parse(req.ResourceID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid resource ID"})
+			return
+		}
+
+		if _, err := uuid.Parse(req.GroupID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+			return
+		}
+
 		permission := ResourcePermission{
 			ResourceID:     req.ResourceID,
 			GroupID:        req.GroupID,
@@ -21,8 +33,16 @@ func HandleCreatePermission(svc *Service) gin.HandlerFunc {
 		}
 
 		if err := svc.CreatePermission(&permission); err != nil {
-			statusCode, responseBody := mapPermissionErrorToResponse(err, "Failed to create permission")
-			c.JSON(statusCode, responseBody)
+			switch {
+			case errors.Is(err, ErrInvalidPermissionType):
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			case errors.Is(err, ErrResourceNotFound), errors.Is(err, ErrGroupNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			case errors.Is(err, ErrPermissionConflict):
+				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create permission"})
+			}
 			return
 		}
 
@@ -33,6 +53,10 @@ func HandleCreatePermission(svc *Service) gin.HandlerFunc {
 func HandleUpdatePermissionType(svc *Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		if _, err := uuid.Parse(id); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid permission ID"})
+			return
+		}
 
 		var req UpdatePermissionTypeRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -42,8 +66,16 @@ func HandleUpdatePermissionType(svc *Service) gin.HandlerFunc {
 
 		updated, err := svc.UpdatePermissionType(id, req.PermissionType)
 		if err != nil {
-			statusCode, responseBody := mapPermissionErrorToResponse(err, "Failed to update permission")
-			c.JSON(statusCode, responseBody)
+			switch {
+			case errors.Is(err, ErrInvalidPermissionType):
+				c.JSON(http.StatusBadRequest, gin.H{"error": ErrInvalidPermissionType.Error()})
+			case errors.Is(err, ErrPermissionNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": ErrPermissionNotFound.Error()})
+			case errors.Is(err, ErrPermissionConflict):
+				c.JSON(http.StatusConflict, gin.H{"error": ErrPermissionConflict.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update permission"})
+			}
 			return
 		}
 
@@ -54,10 +86,18 @@ func HandleUpdatePermissionType(svc *Service) gin.HandlerFunc {
 func HandleDeletePermission(svc *Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		if _, err := uuid.Parse(id); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid permission ID"})
+			return
+		}
 
 		if err := svc.DeletePermission(id); err != nil {
-			statusCode, responseBody := mapPermissionErrorToResponse(err, "Failed to delete permission")
-			c.JSON(statusCode, responseBody)
+			switch {
+			case errors.Is(err, ErrPermissionNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": ErrPermissionNotFound.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete permission"})
+			}
 			return
 		}
 
@@ -68,11 +108,19 @@ func HandleDeletePermission(svc *Service) gin.HandlerFunc {
 func HandleGetGroupPermissions(svc *Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		groupID := c.Param("id")
+		if _, err := uuid.Parse(groupID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
+			return
+		}
 
 		permissions, err := svc.GetPermissionsByGroupID(groupID)
 		if err != nil {
-			statusCode, responseBody := mapPermissionErrorToResponse(err, "Failed to fetch group permissions")
-			c.JSON(statusCode, responseBody)
+			switch {
+			case errors.Is(err, ErrGroupNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": ErrGroupNotFound.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch group permissions"})
+			}
 			return
 		}
 

@@ -186,6 +186,21 @@ func GetUserFromContext(c *gin.Context) *user.User {
 	return nil
 }
 
+// RequireAdminMiddleware restricts access to users with ADMIN role.
+// This middleware reads the user from request context and does not query the database.
+func RequireAdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currentUser := GetUserFromContext(c)
+		if currentUser == nil || currentUser.Role != user.RoleAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
 // Helper to generate UUID (simplified for this file, ideally in a utils package)
 // We'll use the google/uuid package in the main file, but here we can just import it
 // or rely on the store to handle ID generation if we change the model.
