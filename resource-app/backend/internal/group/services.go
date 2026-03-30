@@ -16,8 +16,8 @@ type AddUsersToGroupResult struct {
 }
 
 type RemoveUserFromGroupResult struct {
-	GroupID   string    `json:"group_id"`
-	UserID    string    `json:"user_id"`
+	GroupID string `json:"group_id"`
+	UserID  string `json:"user_id"`
 }
 
 type GroupMemberResult struct {
@@ -34,9 +34,9 @@ func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) CreateGroup(group *Group) error {
+func (s *Service) CreateGroup(group *Group, userIDs []string) error {
 	group.ID = uuid.New().String()
-	return s.repo.CreateGroup(group)
+	return s.repo.CreateGroup(group, userIDs)
 }
 
 func (s *Service) GetGroups() ([]Group, error) {

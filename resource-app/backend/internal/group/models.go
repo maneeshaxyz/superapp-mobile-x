@@ -18,7 +18,13 @@ type UserGroup struct {
 	UpdatedAt time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
 }
 
-type CreateAndUpdateGroupPayload struct {
-    Name        string `json:"name" binding:"required"`
-    Description string `json:"description"`
+type CreateGroupPayload struct {
+	Name        string   `json:"name" binding:"required"`
+	Description string   `json:"description"`
+	UserIDs     []string `json:"userIds" binding:"required,min=1,dive,required,uuid"`
+}
+
+type UpdateGroupPayload struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
 }

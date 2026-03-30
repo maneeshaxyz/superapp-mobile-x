@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,8 +12,12 @@ import (
 
 func HandleCreateGroup(svc *Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var payload CreateAndUpdateGroupPayload
+		var payload CreateGroupPayload
 		if err := c.ShouldBindJSON(&payload); err != nil {
+			if strings.Contains(err.Error(), "CreateGroupPayload.UserIDs") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create group. At least one user should be there"})
+				return
+			}
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -22,11 +27,16 @@ func HandleCreateGroup(svc *Service) gin.HandlerFunc {
 			Description: payload.Description,
 		}
 
-		if err := svc.CreateGroup(&group); err != nil {
-            log.Printf("error creating group: %v", err)
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
-            return
-        }
+		if err := svc.CreateGroup(&group, payload.UserIDs); err != nil {
+			log.Printf("error creating group: %v", err)
+			switch {
+			case errors.Is(err, ErrUserNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
+			}
+			return
+		}
 		c.JSON(http.StatusCreated, gin.H{"success": true, "data": group})
 	}
 }
@@ -51,7 +61,7 @@ func HandleUpdateGroup(svc *Service) gin.HandlerFunc {
 			return
 		}
 
-		var payload CreateAndUpdateGroupPayload
+		var payload UpdateGroupPayload
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -124,8 +134,6 @@ func HandleAddUsersToGroup(svc *Service) gin.HandlerFunc {
 		result, err := svc.AddUsersToGroup(groupID, req.UserIDs)
 		if err != nil {
 			switch {
-			case errors.Is(err, ErrGroupMembershipConflict):
-				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			case errors.Is(err, ErrGroupNotFound), errors.Is(err, ErrUserNotFound):
 				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			default:
