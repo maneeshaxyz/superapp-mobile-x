@@ -58,7 +58,7 @@ export const AdminView = () => {
       {tab === 'users' && <UsersTab />}
       {tab === 'resources' && <ResourcesTab onActiveFullScreen={setIsFullScreenActive} />}
       {tab === 'analytics' && <AnalyticsTab />}
-      {tab === 'groups' && <GroupProvider><GroupsTab /></GroupProvider>}
+      {tab === 'groups' && <GroupProvider><GroupsTab onActiveFullScreen={setIsFullScreenActive} /></GroupProvider>}
     </div>
   );
 };
