@@ -25,7 +25,7 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
   const [isMembersLoading, setIsMembersLoading] = useState(true);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
-  // ─── Add Users Modal ───
+  // ─── Assign Users Modal ───
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [addUserSearch, setAddUserSearch] = useState('');
   const [selectedNewUserIds, setSelectedNewUserIds] = useState<string[]>([]);
@@ -118,8 +118,7 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
     return allUsers
       .filter(u => !memberIds.has(u.id))
       .filter(u =>
-        u.email.toLowerCase().includes(query) ||
-        (u.department || '').toLowerCase().includes(query)
+        u.email.toLowerCase().includes(query)
       );
   }, [allUsers, memberIds, addUserSearch]);
 
@@ -206,7 +205,7 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
               </span>
             </h3>
             <Button size="sm" variant="ghost" onClick={() => setIsAddUserModalOpen(true)} className="h-6 text-primary-600">
-              <UserPlus size={14} className="mr-1" /> Add Users
+              <UserPlus size={14} className="mr-1" /> Assign Users
             </Button>
           </div>
 
@@ -262,7 +261,7 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
         </section>
       </div>
 
-      {/* ── Add Users Modal ── */}
+      {/* ── Assign Users Modal ── */}
       <Modal
         isOpen={isAddUserModalOpen}
         onClose={() => {
@@ -306,7 +305,6 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
                     )}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{user.email}</p>
-                      <p className="text-[10px] text-slate-400">{user.department || 'No Department'}</p>
                     </div>
                   </button>
                 );
@@ -320,7 +318,7 @@ export const GroupDetailsView = ({ group, onClose }: GroupDetailsViewProps) => {
             isLoading={isAddingUsers}
             disabled={selectedNewUserIds.length === 0}
           >
-            Add {selectedNewUserIds.length} User{selectedNewUserIds.length !== 1 ? 's' : ''}
+            Assign {selectedNewUserIds.length} User{selectedNewUserIds.length !== 1 ? 's' : ''}
           </Button>
         </div>
       </Modal>

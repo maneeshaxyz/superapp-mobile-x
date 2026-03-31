@@ -1,7 +1,7 @@
 import { isAxiosError } from 'axios';
 import { httpClient } from '../../api/client';
 import { ApiResponse } from '../../api/types';
-import { Group, CreateAndUpdateGroupPayload, GroupMember, AddUsersToGroupResult, RemoveUserFromGroupResult } from './types';
+import { Group, CreateGroupPayload, UpdateGroupPayload, GroupMember, AddUsersToGroupResult, RemoveUserFromGroupResult } from './types';
 
 const handleApiError = (error: unknown, defaultMessage: string): string => {
   if (isAxiosError(error)) {
@@ -20,7 +20,7 @@ export const groupApi = {
     }
   },
 
-  createGroup: async (payload: CreateAndUpdateGroupPayload): Promise<ApiResponse<Group>> => {
+  createGroup: async (payload: CreateGroupPayload): Promise<ApiResponse<Group>> => {
     try {
       const response = await httpClient.post<{ data: Group }>('/groups', payload);
       return { success: true, data: response.data.data };
@@ -29,7 +29,7 @@ export const groupApi = {
     }
   },
 
-  updateGroup: async (id: string, payload: CreateAndUpdateGroupPayload): Promise<ApiResponse<Group>> => {
+  updateGroup: async (id: string, payload: UpdateGroupPayload): Promise<ApiResponse<Group>> => {
     try {
       const response = await httpClient.patch<{ data: Group }>(`/groups/${id}`, payload);
       return { success: true, data: response.data.data };
@@ -60,10 +60,10 @@ export const groupApi = {
 
   addUsersToGroup: async (groupId: string, userIds: string[]): Promise<ApiResponse<AddUsersToGroupResult>> => {
     try {
-      const response = await httpClient.post<{ data: AddUsersToGroupResult }>(`/groups/${groupId}/users`, { user_ids: userIds });
+      const response = await httpClient.post<{ data: AddUsersToGroupResult }>(`/groups/${groupId}/users`, { userIds: userIds });
       return { success: true, data: response.data.data };
     } catch (error: unknown) {
-      return { success: false, error: handleApiError(error, 'Failed to add users to group') };
+      return { success: false, error: handleApiError(error, 'Failed to assign users to group') };
     }
   },
 

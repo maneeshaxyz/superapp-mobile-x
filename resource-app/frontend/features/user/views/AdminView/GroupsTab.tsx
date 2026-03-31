@@ -8,7 +8,7 @@ import { CreateGroupView } from './CreateGroupView';
 import { GroupDetailsView } from './GroupDetailsView';
 
 export const GroupsTab = ({ onActiveFullScreen }: { onActiveFullScreen: (active: boolean) => void }) => {
-  const { groups } = useGroup();
+  const { groups, clearError } = useGroup();
   const [isCreating, setIsCreating] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<Group | null>(null);
 
@@ -48,6 +48,7 @@ export const GroupsTab = ({ onActiveFullScreen }: { onActiveFullScreen: (active:
               key={g.id}
               className="p-4 flex flex-row items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 transition-colors active:scale-[0.98]"
               onClick={() => {
+                clearError();
                 setViewingGroup(g);
                 onActiveFullScreen(true);
               }}
@@ -55,7 +56,11 @@ export const GroupsTab = ({ onActiveFullScreen }: { onActiveFullScreen: (active:
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-sm text-slate-900 truncate" title={g.name}>{g.name}</h4>
                 {g.description && <p className="text-xs text-slate-500 mt-1 truncate" title={g.description}>{g.description}</p>}
-                <span className="text-[10px] text-slate-400 mt-2 block">Created: {format(new Date(g.createdAt), 'MMM do, yyyy')}</span>
+                {g.createdAt && (
+                  <span className="text-[10px] text-slate-400 mt-2 block">
+                    Created: {format(new Date(g.createdAt), 'MMM do, yyyy')}
+                  </span>
+                )}
               </div>
               <ChevronRight size={18} className="text-slate-300 shrink-0" />
             </Card>
@@ -69,6 +74,7 @@ export const GroupsTab = ({ onActiveFullScreen }: { onActiveFullScreen: (active:
           <button
             className="w-14 h-14 bg-primary-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all pointer-events-auto"
             onClick={() => {
+              clearError();
               setIsCreating(true);
               onActiveFullScreen(true);
             }}

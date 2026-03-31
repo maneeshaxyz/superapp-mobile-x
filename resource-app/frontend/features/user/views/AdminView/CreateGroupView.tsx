@@ -21,8 +21,7 @@ export const CreateGroupView = ({ onClose }: CreateGroupViewProps) => {
   const filteredUsers = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return allUsers.filter(u =>
-      u.email.toLowerCase().includes(query) ||
-      (u.department || '').toLowerCase().includes(query)
+      u.email.toLowerCase().includes(query)
     );
   }, [allUsers, searchQuery]);
 
@@ -106,7 +105,7 @@ export const CreateGroupView = ({ onClose }: CreateGroupViewProps) => {
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="Search users by email or department..."
+              placeholder="Search users by email..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -138,7 +137,7 @@ export const CreateGroupView = ({ onClose }: CreateGroupViewProps) => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{user.email}</p>
-                      <p className="text-[10px] text-slate-400">{user.department || 'No Department'} • {user.role}</p>
+                      <p className="text-[10px] text-slate-400">{user.role}</p>
                     </div>
                   </button>
                 );

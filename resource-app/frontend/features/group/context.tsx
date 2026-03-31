@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { Group, CreateAndUpdateGroupPayload, GroupMember, AddUsersToGroupResult, RemoveUserFromGroupResult } from './types';
+import { Group, CreateGroupPayload, UpdateGroupPayload, GroupMember, AddUsersToGroupResult, RemoveUserFromGroupResult } from './types';
 import { groupApi } from './api';
 
 interface GroupContextState {
   groups: Group[];
   isLoading: boolean;
   error: string | null;
+  clearError: () => void;
   fetchGroups: () => Promise<void>;
-  createGroup: (payload: CreateAndUpdateGroupPayload) => Promise<boolean>;
-  updateGroup: (id: string, payload: CreateAndUpdateGroupPayload) => Promise<boolean>;
+  createGroup: (payload: CreateGroupPayload) => Promise<boolean>;
+  updateGroup: (id: string, payload: UpdateGroupPayload) => Promise<boolean>;
   deleteGroup: (id: string) => Promise<boolean>;
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>;
   addUsersToGroup: (groupId: string, userIds: string[]) => Promise<AddUsersToGroupResult | null>;
@@ -22,6 +23,8 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const clearError = useCallback(() => setError(null), []);
+
   const fetchGroups = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -34,7 +37,7 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setIsLoading(false);
   }, []);
 
-  const createGroup = useCallback(async (payload: CreateAndUpdateGroupPayload) => {
+  const createGroup = useCallback(async (payload: CreateGroupPayload) => {
     setError(null);
     const response = await groupApi.createGroup(payload);
     if (response.success && response.data) {
@@ -45,7 +48,7 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return false;
   }, []);
 
-  const updateGroup = useCallback(async (id: string, payload: CreateAndUpdateGroupPayload) => {
+  const updateGroup = useCallback(async (id: string, payload: UpdateGroupPayload) => {
     setError(null);
     const response = await groupApi.updateGroup(id, payload);
     if (response.success && response.data) {
@@ -69,8 +72,8 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const getGroupMembers = useCallback(async (groupId: string): Promise<GroupMember[]> => {
     const response = await groupApi.getGroupMembers(groupId);
-    if (response.success && response.data) {
-      return response.data;
+    if (response.success) {
+      return response.data || [];
     }
     setError(response.error || 'Failed to fetch group members');
     return [];
@@ -82,7 +85,7 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (response.success && response.data) {
       return response.data;
     }
-    setError(response.error || 'Failed to add users to group');
+    setError(response.error || 'Failed to assign users to group');
     return null;
   }, []);
 
@@ -104,6 +107,7 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     groups,
     isLoading,
     error,
+    clearError,
     fetchGroups,
     createGroup,
     updateGroup,
@@ -111,7 +115,7 @@ export const GroupProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     getGroupMembers,
     addUsersToGroup,
     removeUserFromGroup,
-  }), [groups, isLoading, error, fetchGroups, createGroup, updateGroup, deleteGroup, getGroupMembers, addUsersToGroup, removeUserFromGroup]);
+  }), [groups, isLoading, error, clearError, fetchGroups, createGroup, updateGroup, deleteGroup, getGroupMembers, addUsersToGroup, removeUserFromGroup]);
 
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>;
 };
