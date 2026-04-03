@@ -1,0 +1,514 @@
+openapi: 3.0.0
+info:
+  title: Group Domain API
+  description: API endpoints for managing groups and group memberships in the resource-app
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082/api
+    description: API server (local)
+  - url: /api
+    description: API server (relative)
+
+paths:
+  /groups:
+    post:
+      summary: Create a new group
+      description: Create a new group with optional initial members. Requires Admin privileges.  
+      operationId: createGroup
+      tags:
+        - Groups
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupRequest"
+      responses:
+        "201":
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/CreateGroupResult"
+        "400":
+          description: Invalid input or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to create group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    get:
+      summary: Get all groups
+      description: Retrieve a list of all groups. Requires Admin privileges.  
+      operationId: getGroups
+      tags:
+        - Groups
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Successfully retrieved groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Group"
+        "500":
+          description: Failed to fetch groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /groups/{id}:
+    patch:
+      summary: Update a group
+      description: Update group name and description
+      operationId: updateGroup
+      tags:
+        - Groups
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGroupRequest"
+      responses:
+        "200":
+          description: Group updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Group"
+        "400":
+          description: Invalid input or invalid group ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to update group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      summary: Delete a group
+      description: Delete a group by ID
+      operationId: deleteGroup
+      tags:
+        - Groups
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Group deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: boolean
+        "400":
+          description: Invalid group ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to delete group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /groups/{id}/users:
+    get:
+      summary: Get group members
+      description: Get all members of a specific group
+      operationId: getGroupMembers
+      tags:
+        - Group Membership
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved group members
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: User ID
+                        name:
+                          type: string
+                          description: User name
+                        email:
+                          type: string
+                          format: email
+                          description: User email
+        "400":
+          description: Invalid group ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to fetch group members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Add users to a group
+      description: Add one or more users to a specific group
+      operationId: addUsersToGroup
+      tags:
+        - Group Membership
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddUsersToGroupRequest"
+      responses:
+        "201":
+          description: Users added to group successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/AddUsersToGroupResult"
+        "400":
+          description: Invalid input or invalid IDs format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group or user not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to add users to group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /groups/{id}/users/{userId}:
+    delete:
+      summary: Remove user from group
+      description: Remove a specific user from a group
+      operationId: removeUserFromGroup
+      tags:
+        - Group Membership
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          description: User ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User removed from group successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      groupId:
+                        type: string
+                        format: uuid
+                      userId:
+                        type: string
+                        format: uuid
+        "400":
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group or group membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to remove user from group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique group identifier
+        name:
+          type: string
+          description: Name of the group
+        description:
+          type: string
+          description: Description of the group
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when group was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when group was last updated
+      required:
+        - id
+        - name
+
+    CreateGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the group
+          example: "Engineering Team"
+        description:
+          type: string
+          description: Description of the group
+          example: "Engineering team members"
+        userIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of user IDs to add to the group (optional)
+          example:
+            [
+              "550e8400-e29b-41d4-a716-446655440000",
+              "550e8400-e29b-41d4-a716-446655440001",
+            ]
+      required:
+        - name
+
+    CreateGroupResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique group identifier
+        name:
+          type: string
+          description: Name of the group
+        description:
+          type: string
+          description: Description of the group
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when group was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when group was last updated
+        userIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of user IDs in the group
+
+    UpdateGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the group
+          example: "Engineering Team"
+        description:
+          type: string
+          description: Description of the group
+          example: "Engineering team members"
+      required:
+        - name
+
+    AddUsersToGroupRequest:
+      type: object
+      properties:
+        userIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of user IDs to add to the group
+          example:
+            [
+              "550e8400-e29b-41d4-a716-446655440000",
+              "550e8400-e29b-41d4-a716-446655440001",
+            ]
+      required:
+        - userIds
+
+    AddUsersToGroupResult:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+          description: Group ID
+        addedUsers:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+                format: uuid
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

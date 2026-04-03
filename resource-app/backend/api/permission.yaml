@@ -1,0 +1,392 @@
+openapi: 3.0.0
+info:
+  title: Permission Domain API
+  description: API endpoints for managing resource permissions and group access control in the resource-app. All endpoints in this domain require Admin privileges.  
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082/api
+    description: API server (local)
+  - url: /api
+    description: API server (relative)
+
+paths:
+  /resource-permissions:
+    post:
+      summary: Create a resource permission
+      description: Grant a group permission to access a specific resource
+      operationId: createPermission
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePermissionRequest"
+      responses:
+        "201":
+          description: Permission created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ResourcePermission"
+        "400":
+          description: Invalid input, invalid IDs format, or invalid permission type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Resource or group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Permission already exists for the same group and resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to create permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /resource-permissions/{id}:
+    patch:
+      summary: Update permission type
+      description: Update the permission type for an existing resource permission
+      operationId: updatePermissionType
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Permission ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePermissionTypeRequest"
+      responses:
+        "200":
+          description: Permission type updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ResourcePermission"
+        "400":
+          description: Invalid input, invalid permission ID format, or invalid permission type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Permission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Permission conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to update permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      summary: Delete a permission
+      description: Remove a resource permission for a group
+      operationId: deletePermission
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Permission ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Permission deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: boolean
+        "400":
+          description: Invalid permission ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Permission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to delete permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /groups/{id}/permissions:
+    get:
+      summary: Get group permissions
+      description: Get all resource permissions for a specific group
+      operationId: getGroupPermissions
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Group ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved group permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GroupPermissionResult"
+        "400":
+          description: Invalid group ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to fetch group permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /resources/{id}/permissions:
+    get:
+      summary: Get resource permissions
+      description: Get all group permissions for a specific resource
+      operationId: getResourcePermissions
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved resource permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ResourcePermissionResult"
+        "404":
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to fetch resource permissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    ResourcePermission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique permission identifier
+        resourceId:
+          type: string
+          format: uuid
+          description: ID of the resource
+        groupId:
+          type: string
+          format: uuid
+          description: ID of the group
+        permissionType:
+          type: string
+          enum: [REQUEST, APPROVE]
+          description: Type of permission granted to the group
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when permission was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when permission was last updated
+      required:
+        - id
+        - resourceId
+        - groupId
+        - permissionType
+
+    GroupPermissionResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique permission identifier
+        resourceId:
+          type: string
+          format: uuid
+          description: ID of the resource
+        resourceName:
+          type: string
+          description: Name of the resource
+        permissionType:
+          type: string
+          enum: [REQUEST, APPROVE]
+          description: Type of permission granted to the group
+
+    ResourcePermissionResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique permission identifier
+        groupId:
+          type: string
+          format: uuid
+          description: ID of the group
+        groupName:
+          type: string
+          description: Name of the group
+        permissionType:
+          type: string
+          enum: [REQUEST, APPROVE]
+          description: Type of permission granted to the group
+
+    CreatePermissionRequest:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+          description: ID of the resource
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        groupId:
+          type: string
+          format: uuid
+          description: ID of the group
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        permissionType:
+          type: string
+          enum: [REQUEST, APPROVE]
+          description: Type of permission to grant
+          example: "REQUEST"
+      required:
+        - resourceId
+        - groupId
+        - permissionType
+
+    UpdatePermissionTypeRequest:
+      type: object
+      properties:
+        permissionType:
+          type: string
+          enum: [REQUEST, APPROVE]
+          description: New permission type
+          example: "APPROVE"
+      required:
+        - permissionType
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

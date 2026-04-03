@@ -1,0 +1,281 @@
+openapi: 3.0.0
+info:
+  title: Resource Domain API
+  description: API endpoints for managing resources in the resource-app
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082/api
+    description: API server (local)
+  - url: /api
+    description: API server (relative)
+
+paths:
+  /resources:
+    get:
+      summary: Get all resources
+      description: Retrieve a list of all available resources
+      operationId: getResources
+      tags:
+        - Resources
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Successfully retrieved resources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Resource"
+        "500":
+          description: Failed to fetch resources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Create a new resource
+      description: Create a new resource with the provided details. Requires Admin privileges.  
+      operationId: createResource
+      tags:
+        - Resources
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceRequest"
+      responses:
+        "201":
+          description: Resource created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Resource"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to create resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /resources/{id}:
+    put:
+      summary: Update a resource
+      description: Update an existing resource by ID. Requires Admin privileges.  
+      operationId: updateResource
+      tags:
+        - Resources
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceRequest"
+      responses:
+        "200":
+          description: Resource updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Resource"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to update resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      summary: Delete a resource
+      description: Delete a resource by ID. Requires Admin privileges.  
+      operationId: deleteResource
+      tags:
+        - Resources
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Resource ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Resource deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: boolean
+        "500":
+          description: Failed to delete resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique resource identifier
+        name:
+          type: string
+          description: Name of the resource
+        type:
+          type: string
+          description: Type/category of the resource
+        description:
+          type: string
+          description: Description of the resource
+        isActive:
+          type: boolean
+          default: true
+          description: Whether the resource is active
+        minLeadTimeHours:
+          type: integer
+          default: 0
+          description: Minimum lead time required in hours
+        icon:
+          type: string
+          description: Icon identifier for the resource
+        color:
+          type: string
+          description: Color code for the resource
+        specs:
+          type: object
+          nullable: true
+          description: JSON specifications of the resource
+        formFields:
+          type: object
+          nullable: true
+          description: JSON form fields for booking the resource
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when resource was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when resource was last updated
+      required:
+        - id
+        - name
+        - type
+
+    CreateResourceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the resource
+          example: "Conference Room A"
+        type:
+          type: string
+          description: Type/category of the resource
+          example: "room"
+        description:
+          type: string
+          description: Description of the resource
+          example: "Large conference room with AV equipment"
+        isActive:
+          type: boolean
+          default: true
+          description: Whether the resource is active
+        minLeadTimeHours:
+          type: integer
+          default: 0
+          description: Minimum lead time required in hours
+          example: 2
+        icon:
+          type: string
+          description: Icon identifier for the resource
+          example: "conference-room"
+        color:
+          type: string
+          description: Color code for the resource
+          example: "#FF5733"
+        specs:
+          type: object
+          nullable: true
+          description: JSON specifications of the resource
+          example: { "capacity": 20, "hasVideo": true }
+        formFields:
+          type: object
+          nullable: true
+          description: JSON form fields for booking the resource
+      required:
+        - name
+        - type
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
