@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS resources (
     color VARCHAR(20),
     specs JSON,
     form_fields JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_resources_name (name)
 );
 
 CREATE TABLE IF NOT EXISTS bookings (

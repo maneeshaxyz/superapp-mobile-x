@@ -11,11 +11,12 @@ import (
 var ErrGroupNotFound = errors.New("group not found")
 var ErrUserNotFound = errors.New("one or more users not found")
 var ErrGroupMembershipNotFound = errors.New("group membership not found")
+var ErrGroupNameDuplicate = errors.New("group name already exists")
 
 type Repository interface {
 	CreateGroup(createGroup *CreateGroupPayload) (*CreateGroupResult, error)
 	GetGroups() ([]Group, error)
-	UpdateGroup(group *Group) error
+	UpdateGroup(id string, updateGroup *UpdateGroupPayload) error
 	DeleteGroup(id string) error
 	AddUsersToGroup(groupID string, userIDs []string) (*AddUsersToGroupResult, error)
 	RemoveUserFromGroup(groupID, userID string) (*RemoveUserFromGroupResult, error)
@@ -54,6 +55,10 @@ func (r *GormRepository) CreateGroup(createGroup *CreateGroupPayload) (*CreateGr
 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(group).Error; err != nil {
+			// Map DB duplicate key failures to domain error so handler can return 409 Conflict.
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				return ErrGroupNameDuplicate
+			}
 			return err
 		}
 
@@ -89,15 +94,21 @@ func (r *GormRepository) GetGroups() ([]Group, error) {
 	return groups, result.Error
 }
 
-func (r *GormRepository) UpdateGroup(group *Group) error {
+func (r *GormRepository) UpdateGroup(id string, updateGroup *UpdateGroupPayload) error {
+	updates := Group{
+		Name:        updateGroup.Name,
+		Description: updateGroup.Description,
+	}
+
 	result := r.db.Model(&Group{}).
-		Where("id = ?", group.ID).
-		Updates(Group{
-			Name:        group.Name,
-			Description: group.Description,
-		})
+		Where("id = ?", id).
+		Select("name", "description").
+		Updates(&updates)
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+			return ErrGroupNameDuplicate
+		}
 		return result.Error
 	}
 

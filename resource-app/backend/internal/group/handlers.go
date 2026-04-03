@@ -17,18 +17,19 @@ func HandleCreateGroup(svc *Service) gin.HandlerFunc {
 			return
 		}
 
-		group, err := svc.CreateGroup(&payload)
+		result, err := svc.CreateGroup(&payload)
 		if err != nil {
-			log.Printf("error creating group: %v", err)
 			switch {
-			case errors.Is(err, ErrUserNotFound):
-				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			case errors.Is(err, ErrGroupNameDuplicate):
+				c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
 			default:
+				log.Printf("error creating group: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
 			}
 			return
 		}
-		c.JSON(http.StatusCreated, gin.H{"success": true, "data": group})
+
+		c.JSON(http.StatusCreated, gin.H{"success": true, "data": result})
 	}
 }
 
@@ -58,14 +59,10 @@ func HandleUpdateGroup(svc *Service) gin.HandlerFunc {
 			return
 		}
 
-		group := Group{
-			ID:          groupID,
-			Name:        payload.Name,
-			Description: payload.Description,
-		}
-
-		if err := svc.UpdateGroup(&group); err != nil {
+		if err := svc.UpdateGroup(groupID, &payload); err != nil {
 			switch {
+			case errors.Is(err, ErrGroupNameDuplicate):
+				c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
 			case errors.Is(err, ErrGroupNotFound):
 				c.JSON(http.StatusNotFound, gin.H{"error": ErrGroupNotFound.Error()})
 			default:
@@ -74,7 +71,7 @@ func HandleUpdateGroup(svc *Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": group})
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": payload})
 	}
 }
 

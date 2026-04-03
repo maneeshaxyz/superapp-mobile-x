@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +27,12 @@ func HandleAddResource(svc *Service) gin.HandlerFunc {
 		}
 
 		if err := svc.AddResource(&req); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create resource"})
+			switch {
+			case errors.Is(err, ErrResourceNameDuplicate):
+				c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create resource"})
+			}
 			return
 		}
 
@@ -47,7 +53,14 @@ func HandleUpdateResource(svc *Service) gin.HandlerFunc {
 		req.ID = id
 
 		if err := svc.UpdateResource(&req); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update resource"})
+			switch {
+			case errors.Is(err, ErrResourceNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			case errors.Is(err, ErrResourceNameDuplicate):
+				c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update resource"})
+			}
 			return
 		}
 

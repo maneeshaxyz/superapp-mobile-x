@@ -1,8 +1,12 @@
 package resource
 
 import (
+	"errors"
 	"gorm.io/gorm"
 )
+
+var ErrResourceNameDuplicate = errors.New("resource name already exists")
+var ErrResourceNotFound = errors.New("resource not found")
 
 type Repository interface {
 	GetResources() ([]Resource, error)
@@ -27,21 +31,53 @@ func (r *GormRepository) GetResources() ([]Resource, error) {
 }
 
 func (r *GormRepository) AddResource(resource *Resource) error {
-	return r.db.Create(resource).Error
+	if err := r.db.Create(resource).Error; err != nil {
+		// Map DB duplicate key violation to service-domain conflict error.
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return ErrResourceNameDuplicate
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (r *GormRepository) UpdateResource(resource *Resource) error {
-	return r.db.Model(&Resource{}).
+	result := r.db.Model(&Resource{}).
 		Where("id = ?", resource.ID).
-		Updates(resource).Error
+		Updates(resource)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+			return ErrResourceNameDuplicate
+		}
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrResourceNotFound
+	}
+	return nil
 }
 
 func (r *GormRepository) DeleteResource(id string) error {
-	return r.db.Delete(&Resource{}, "id = ?", id).Error
+	result := r.db.Delete(&Resource{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrResourceNotFound
+	}
+	return nil
 }
 
 func (r *GormRepository) GetResourceByID(id string) (*Resource, error) {
 	var resource Resource
 	result := r.db.First(&resource, "id = ?", id)
-	return &resource, result.Error
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, ErrResourceNotFound
+		}
+		return nil, result.Error
+	}
+	return &resource, nil
 }
