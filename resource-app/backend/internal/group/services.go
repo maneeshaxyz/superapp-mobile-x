@@ -1,5 +1,8 @@
 package group
 
+import "resource-app/internal/utils"
+
+
 type Service struct {
 	repo Repository
 }
@@ -9,6 +12,9 @@ func NewService(repo Repository) *Service {
 }
 
 func (s *Service) CreateGroup(createGroup *CreateGroupPayload) (*CreateGroupResult, error) {
+	// Normalize user-provided name before persist: trim spaces, collapse repeated spaces, and title-case.
+	// This ensures the DB receives canonical names and duplicate key checks become effective.
+	createGroup.Name = utils.NormalizeName(createGroup.Name)
 	return s.repo.CreateGroup(createGroup)
 }
 
@@ -16,8 +22,9 @@ func (s *Service) GetGroups() ([]Group, error) {
 	return s.repo.GetGroups()
 }
 
-func (s *Service) UpdateGroup(group *Group) error {
-	return s.repo.UpdateGroup(group)
+func (s *Service) UpdateGroup(id string, updateGroup *UpdateGroupPayload) error {
+	updateGroup.Name = utils.NormalizeName(updateGroup.Name)
+	return s.repo.UpdateGroup(id, updateGroup)
 }
 
 func (s *Service) DeleteGroup(id string) error {
