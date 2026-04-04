@@ -1,15 +1,13 @@
 package handlers
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"pay-slip-app/internal/constants"
 	"pay-slip-app/internal/models"
+	"pay-slip-app/internal/utils"
 	"strconv"
-	"strings"
-	"time"
 )
 
 // ── PaySlip handlers ──────────────────────────────────────────────────────────
@@ -21,7 +19,7 @@ func (h *PaySlipHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if currentUser.Role != string(constants.RoleAdmin) {
+	if currentUser.Role != models.UserRoleAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -53,7 +51,7 @@ func (h *PaySlipHandler) CreatePaySlip(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if currentUser.Role != string(constants.RoleAdmin) {
+	if currentUser.Role != models.UserRoleAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -128,7 +126,7 @@ func (h *PaySlipHandler) GetMyPaySlips(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit, afterID, afterCreatedAt, err := h.parsePagination(r)
+	limit, afterID, afterCreatedAt, err := utils.ParsePagination(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -150,12 +148,12 @@ func (h *PaySlipHandler) GetAllPaySlips(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if currentUser.Role != string(constants.RoleAdmin) {
+	if currentUser.Role != models.UserRoleAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	limit, afterID, afterCreatedAt, err := h.parsePagination(r)
+	limit, afterID, afterCreatedAt, err := utils.ParsePagination(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -207,7 +205,7 @@ func (h *PaySlipHandler) GetPaySlipByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if currentUser.Role != string(constants.RoleAdmin) && ps.UserID != currentUser.ID {
+	if currentUser.Role != models.UserRoleAdmin && ps.UserID != currentUser.ID {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -228,7 +226,7 @@ func (h *PaySlipHandler) DeletePaySlip(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if currentUser.Role != string(constants.RoleAdmin) {
+	if currentUser.Role != models.UserRoleAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -243,55 +241,14 @@ func (h *PaySlipHandler) DeletePaySlip(w http.ResponseWriter, r *http.Request) {
 
 // ── Private Helpers ──────────────────────────────────────────────────────────
 
-func (h *PaySlipHandler) parsePagination(r *http.Request) (int, string, *time.Time, error) {
-	limitStr := r.URL.Query().Get("limit")
-	cursorStr := r.URL.Query().Get("cursor")
-
-	var limit int
-	if limitStr != "" {
-		var err error
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil {
-			return 0, "", nil, fmt.Errorf("Invalid 'limit' parameter: must be an integer")
-		}
-	}
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 50 {
-		limit = 50
-	}
-
-	var afterID string
-	var afterCreatedAt *time.Time
-
-	if cursorStr != "" {
-		decoded, _ := base64.StdEncoding.DecodeString(cursorStr)
-		parts := strings.Split(string(decoded), "|")
-
-		if len(parts) != 2 {
-			return 0, "", nil, fmt.Errorf("invalid cursor format")
-		}
-
-		if ts, err := time.Parse(time.RFC3339, parts[0]); err == nil {
-			afterCreatedAt = &ts
-			afterID = parts[1]
-		}
-	}
-	return limit, afterID, afterCreatedAt, nil
-}
 
 func (h *PaySlipHandler) respondWithPaySlips(w http.ResponseWriter, slips []models.PaySlip, total int, limit int) {
 	data := slips
-	if limit > 0 && len(slips) > limit {
-		data = slips[:limit]
-	}
-
 	var nextCursor *string
 	if limit > 0 && len(slips) > limit {
+		data = slips[:limit]
 		last := data[limit-1]
-		cursor := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s|%s", last.CreatedAt.Format(time.RFC3339), last.ID)))
-		nextCursor = &cursor
+		nextCursor = utils.EncodeCursor(last.CreatedAt, last.ID)
 	}
 
 	jsonResponse(w, http.StatusOK, models.PaySlipsResponse{

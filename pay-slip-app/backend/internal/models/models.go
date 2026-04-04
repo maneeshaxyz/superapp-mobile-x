@@ -3,17 +3,23 @@ package models
 
 import (
 	"errors"
-	"pay-slip-app/internal/constants"
 	"strings"
 	"time"
 )
 
+// UserRole represents the access level of a user.
+type UserRole string
+
+const (
+	UserRoleAdmin UserRole = "admin"
+	UserRoleUser  UserRole = "user"
+)
+
 // User represents an authenticated employee in the system.
-// ... (User struct remains the same)
 type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
-	Role      string    `json:"role"`
+	Role      UserRole  `json:"role"`
 	CreatedAt time.Time `json:"-"`
 }
 
@@ -36,6 +42,13 @@ type PaySlipsResponse struct {
 	Data       []PaySlip `json:"data"`
 	Total      int       `json:"total"`
 	NextCursor *string   `json:"nextCursor"`
+}
+
+// UsersResponse is the unified response for GET /api/v2/users.
+type UsersResponse struct {
+	Data       []User  `json:"data"`
+	Total      int     `json:"total"`
+	NextCursor *string `json:"nextCursor"`
 }
 
 // CreatePaySlipRequest is the JSON body for POST /api/pay-slips.
@@ -67,11 +80,11 @@ func (r *CreatePaySlipRequest) Validate() error {
 
 // UpdateUserRoleRequest is used by PUT /api/users/:id/role.
 type UpdateUserRoleRequest struct {
-	Role string `json:"role"`
+	Role UserRole `json:"role"`
 }
 
 func (r *UpdateUserRoleRequest) Validate() error {
-	if r.Role != string(constants.RoleAdmin) && r.Role != string(constants.RoleUser) {
+	if r.Role != UserRoleAdmin && r.Role != UserRoleUser {
 		return errors.New("role must be either 'admin' or 'user'")
 	}
 	return nil

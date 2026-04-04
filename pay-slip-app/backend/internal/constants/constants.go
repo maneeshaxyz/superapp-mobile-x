@@ -1,12 +1,4 @@
-// internal/constants/constants.go
 package constants
-
-type Role string
-
-const (
-	RoleAdmin Role = "admin"
-	RoleUser  Role = "user"
-)
 
 const (
 	ContextUserKey = "user"

@@ -100,6 +100,12 @@ func (db *Database) Query(query string, args ...any) (*sql.Rows, error) {
 	return conn.Query(query, args...)
 }
 
+func (db *Database) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	return db.Conn.BeginTx(ctx, opts)
+}
+
 func (db *Database) QueryRow(query string, args ...any) *sql.Row {
 	db.mu.RLock()
 	conn := db.Conn
@@ -133,9 +139,9 @@ func (db *Database) Ping() error {
 }
 
 func (db *Database) Close() error {
-	db.mu.Lock()
+	db.mu.RLock()
 	conn := db.Conn
-	db.mu.Unlock()
+	db.mu.RUnlock()
 	return conn.Close()
 }
 
@@ -145,4 +151,3 @@ func (db *Database) Begin() (*sql.Tx, error) {
 	db.mu.RUnlock()
 	return conn.Begin()
 }
-
