@@ -112,6 +112,7 @@ func main() {
 	user.RegisterRoutes(apiGroup, userService)
 
 	// Groups
+	apiGroup.GET("/me/groups", group.HandleGetMyGroups(groupService))
 	adminGroup.POST("/groups", group.HandleCreateGroup(groupService))
 	adminGroup.GET("/groups", group.HandleGetGroups(groupService))
 	adminGroup.PATCH("/groups/:id", group.HandleUpdateGroup(groupService))
@@ -156,7 +157,6 @@ func main() {
 	// Start server
 	port := config.GetEnv("PORT", config.DefaultPort)
 	log.Printf("Starting %s on port %s", config.ServiceName, port)
-
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)

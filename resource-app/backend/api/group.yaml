@@ -344,8 +344,74 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /me/groups:
+    get:
+      summary: Get current user's groups
+      description: Retrieve the authenticated user's groups using identity from auth context. Returns only group id and name.
+      operationId: getMyGroups
+      tags:
+        - Group Membership
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Successfully retrieved current user's groups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GroupSummary"
+              examples:
+                hasGroups:
+                  summary: User belongs to two groups
+                  value:
+                    success: true
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440100"
+                        name: "Engineering Team"
+                      - id: "550e8400-e29b-41d4-a716-446655440101"
+                        name: "Approvers"
+                noGroups:
+                  summary: User has no groups
+                  value:
+                    success: true
+                    data: []
+        "401":
+          description: User not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Failed to fetch current user's groups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
+    GroupSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique group identifier
+        name:
+          type: string
+          description: Name of the group
+      required:
+        - id
+        - name
+
     Group:
       type: object
       properties:

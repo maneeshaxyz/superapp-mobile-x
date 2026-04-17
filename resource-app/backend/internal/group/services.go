@@ -2,7 +2,6 @@ package group
 
 import "resource-app/internal/utils"
 
-
 type Service struct {
 	repo Repository
 }
@@ -20,6 +19,10 @@ func (s *Service) CreateGroup(createGroup *CreateGroupPayload) (*CreateGroupResu
 
 func (s *Service) GetGroups() ([]Group, error) {
 	return s.repo.GetGroups()
+}
+
+func (s *Service) GetGroupsForUser(userID string) ([]GetMyGroupsResult, error) {
+	return s.repo.GetGroupsForUser(userID)
 }
 
 func (s *Service) UpdateGroup(id string, updateGroup *UpdateGroupPayload) error {

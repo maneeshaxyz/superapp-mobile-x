@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"resource-app/internal/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -183,5 +184,23 @@ func HandleGetGroupMembers(svc *Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": members})
+	}
+}
+
+func HandleGetMyGroups(svc *Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currentUser := auth.GetUserFromContext(c)
+		if currentUser == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		groups, err := svc.GetGroupsForUser(currentUser.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user groups"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": groups})
 	}
 }

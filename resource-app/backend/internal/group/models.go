@@ -61,3 +61,8 @@ type GroupMemberResult struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
+
+type GetMyGroupsResult struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

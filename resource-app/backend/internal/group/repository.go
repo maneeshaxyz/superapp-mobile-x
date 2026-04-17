@@ -16,6 +16,7 @@ var ErrGroupNameDuplicate = errors.New("group name already exists")
 type Repository interface {
 	CreateGroup(createGroup *CreateGroupPayload) (*CreateGroupResult, error)
 	GetGroups() ([]Group, error)
+	GetGroupsForUser(userID string) ([]GetMyGroupsResult, error)
 	UpdateGroup(id string, updateGroup *UpdateGroupPayload) error
 	DeleteGroup(id string) error
 	AddUsersToGroup(groupID string, userIDs []string) (*AddUsersToGroupResult, error)
@@ -92,6 +93,22 @@ func (r *GormRepository) GetGroups() ([]Group, error) {
 	var groups []Group
 	result := r.db.Find(&groups)
 	return groups, result.Error
+}
+
+func (r *GormRepository) GetGroupsForUser(userID string) ([]GetMyGroupsResult, error) {
+	groups := make([]GetMyGroupsResult, 0)
+	err := r.db.Table("groups AS g").
+		Select("g.id, g.name").
+		Joins("JOIN user_groups ug ON ug.group_id = g.id").
+		Where("ug.user_id = ?", userID).
+		Order("g.name ASC").
+		Order("g.id ASC").
+		Scan(&groups).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
 }
 
 func (r *GormRepository) UpdateGroup(id string, updateGroup *UpdateGroupPayload) error {
