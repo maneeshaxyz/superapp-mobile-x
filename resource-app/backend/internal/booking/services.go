@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"slices"
 	"time"
 
 	perm "resource-app/internal/permission"
@@ -23,13 +24,38 @@ func NewService(repo Repository, permissionSvc *perm.Service) *Service {
 
 func (s *Service) GetBookings(filter BookingFilter) ([]Booking, error) {
 	var userID *string
-	if filter.Scope == BookingScopeMe {
-		userID = &filter.CurrentUserID
-	}
-
 	var resourceIDs []string
+
+	// Apply generic resource filter first so it works even when scope is omitted.
 	if filter.ResourceID != "" {
 		resourceIDs = []string{filter.ResourceID}
+	}
+
+	switch filter.Scope {
+	// "me" scope: only return bookings made by the current user.
+	case BookingScopeMe:
+		userID = &filter.CurrentUserID
+
+	// "approvable" scope: return bookings for resources the user has APPROVE permission on.
+	case BookingScopeApprovable:
+		approvableResourceIDs, err := s.permissionSvc.GetApprovableResourceIDs(filter.CurrentUserID)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(approvableResourceIDs) == 0 {
+			return []Booking{}, nil
+		}
+
+		if filter.ResourceID != "" {
+			// If a specific resource is requested, it must be approvable by this user.
+			if !slices.Contains(approvableResourceIDs, filter.ResourceID) {
+				return nil, ErrBookingViewPermissionDenied
+			}
+		} else {
+			// No specific resource requested: return bookings from all approvable resources.
+			resourceIDs = approvableResourceIDs
+		}
 	}
 
 	return s.repo.GetBookings(userID, filter.Statuses, resourceIDs)

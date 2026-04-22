@@ -49,7 +49,12 @@ func HandleGetBookings(svc *Service) gin.HandlerFunc {
 
 		bookings, err := svc.GetBookings(filter)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch bookings"})
+			switch {
+			case errors.Is(err, ErrBookingViewPermissionDenied):
+				c.JSON(http.StatusForbidden, gin.H{"success": false, "error": ErrBookingViewPermissionDenied.Error()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch bookings"})
+			}
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": bookings})

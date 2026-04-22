@@ -498,10 +498,15 @@ components:
     ErrorResponse:
       type: object
       properties:
+        success:
+          type: boolean
+          description: Indicates the request failed
+          example: false
         error:
           type: string
           description: Error message
       required:
+        - success
         - error
 
   securitySchemes:

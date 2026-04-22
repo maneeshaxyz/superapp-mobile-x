@@ -9,7 +9,7 @@ import (
 type Booking struct {
 	ID              string          `json:"id" gorm:"primaryKey;type:varchar(36)"`
 	ResourceID      string          `json:"resourceId" gorm:"index;type:varchar(36);not null"`
-	UserID          string          `json:"userId" gorm:"index;type:varchar(36);not null"`
+	UserID          string          `json:"userId" gorm:"index;type:varchar(36);not null"` // The user who made the booking
 	Start           time.Time       `json:"start" gorm:"not null"`
 	End             time.Time       `json:"end" gorm:"not null"`
 	Status          BookingStatus   `json:"status" gorm:"index;type:varchar(20);default:'pending'"`
